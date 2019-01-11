@@ -1,0 +1,13 @@
+.DS_Store
+*.pkl
+*.pyc
+*.so
+*.o
+*.c
+parameters.pxi
+parameters_micro.pxi
+Csrc/parameters.h
+Csrc/parameters_micro.h
+build/
+input/
+run/
