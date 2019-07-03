@@ -200,7 +200,7 @@ def parse_files(path, o_path):
 
 if __name__ == '__main__':
     #o_path = '/cluster/scratch/presselk/2dcrm/refac/rk3_s_subs_new_pdv_gbp_sa_restart/Output.1_00x_140.625.1_00x_140.625/altered_fields/' 
-    o_path = '/central/groups/esm/zhaoyi/GCMForcedLES/altered_fields/test/' 
+    o_path = '/central/groups/esm/zhaoyi/GCMForcedLES/altered_fields/1_00x/250m/90.0/18280800/' 
     #path =  '/cluster/scratch/presselk/2dcrm/refac/rk3_s_subs_new_pdv_gbp_sa_restart/Output.1_00x_140.625.1_00x_140.625/Restart/10368000/'
-    path = '/central/groups/esm/zhaoyi/GCMForcedLES/restart/test/172800/' 
+    path = '/central/scratch/zhaoyi/1_00x/Output.1_00x_90.0_250m.4x/Restart/18280800/' 
     main(path, o_path)

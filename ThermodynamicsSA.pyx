@@ -143,7 +143,10 @@ cdef class ThermodynamicsSA:
 
 
         NS.add_profile('cloud_fraction', Gr, Pa)
+        NS.add_profile('cloud_cum_fraction', Gr, Pa)
         NS.add_ts('cloud_fraction', Gr, Pa)
+        NS.add_ts('cloud_mid_fraction', Gr, Pa)
+        NS.add_ts('cloud_threshold_fraction', Gr, Pa)
         NS.add_ts('cloud_top', Gr, Pa)
         NS.add_ts('cloud_base', Gr, Pa)
         NS.add_ts('lwp', Gr, Pa)
@@ -485,10 +488,16 @@ cdef class ThermodynamicsSA:
             double[:, :] qi_pencils 
             # Cloud indicator
             double[:] ci
+            double[:] ci_threshold
+            double[:] ci_mid
+            double[:] ci_cum
             double cb
             double ct
             # Weighted sum of local cloud indicator
             double ci_weighted_sum = 0.0
+            double ci_threshold_weighted_sum = 0.0
+            double ci_mid_weighted_sum = 0.0
+            double ci_cum_weighted_sum = 0.0
             double mean_divisor = np.double(Gr.dims.n[0] * Gr.dims.n[1])
 
             double dz = Gr.dims.dx[2]
@@ -496,6 +505,7 @@ cdef class ThermodynamicsSA:
             double lwp_weighted_sum = 0.0
 
             double[:] cf_profile = np.zeros((Gr.dims.n[2]), dtype=np.double, order='c')
+            double[:] cf_cum_profile = np.zeros((Gr.dims.n[2]), dtype=np.double, order='c')
 
         # Initialize the z-pencil
         z_pencil.initialize(Gr, Pa, 2)
@@ -528,6 +538,56 @@ cdef class ThermodynamicsSA:
 
         ci_weighted_sum = Pa.domain_scalar_sum(ci_weighted_sum)
         NS.write_ts('cloud_fraction', ci_weighted_sum, Pa)
+        
+        # 062119[ZS]: Compute all or nothing cloud fraction for qc > 1.e-5
+        ci_threshold = np.empty((z_pencil.n_local_pencils), dtype=np.double, order='c')
+        with nogil:
+            for pi in xrange(z_pencil.n_local_pencils):
+                for k in xrange(kmin, kmax):
+                    if (ql_pencils[pi, k] + qi_pencils[pi, k] > 1.0e-5):
+                        ci_threshold[pi] = 1.0
+                        break
+                    else:
+                        ci_threshold[pi] = 0.0
+            for pi in xrange(z_pencil.n_local_pencils):
+                ci_threshold_weighted_sum += ci_threshold[pi]
+            ci_threshold_weighted_sum /= mean_divisor
+
+        ci_threshold_weighted_sum = Pa.domain_scalar_sum(ci_threshold_weighted_sum)
+        NS.write_ts('cloud_threshold_fraction', ci_threshold_weighted_sum, Pa)
+
+        # 062019[ZS]: Compute all or nothing cloud fraction below 8km
+        ci_mid = np.empty((z_pencil.n_local_pencils), dtype=np.double, order='c')
+        with nogil:
+            for pi in xrange(z_pencil.n_local_pencils):
+                for k in xrange(kmin, kmax):
+                    if (ql_pencils[pi, k] + qi_pencils[pi, k] > 0.0) and (Gr.zp_half[gw + k]<=8000.0):
+                        ci_mid[pi] = 1.0
+                        break
+                    else:
+                        ci_mid[pi] = 0.0
+            for pi in xrange(z_pencil.n_local_pencils):
+                ci_mid_weighted_sum += ci_mid[pi]
+            ci_mid_weighted_sum /= mean_divisor
+
+        ci_mid_weighted_sum = Pa.domain_scalar_sum(ci_mid_weighted_sum)
+        NS.write_ts('cloud_mid_fraction', ci_mid_weighted_sum, Pa)
+
+        # 062019[ZS]: Compute cumulative cloud fraction profile
+        ci_cum = np.empty((z_pencil.n_local_pencils), dtype=np.double, order='c')
+        ci_cum[:] = 0.0
+        with nogil:
+            for k in xrange(kmin, kmax):
+                for pi in xrange(z_pencil.n_local_pencils):
+                    if (ql_pencils[pi, k] + qi_pencils[pi, k] > 0.0):
+                        ci_cum[pi] = 1.0
+                for pi in xrange(z_pencil.n_local_pencils):
+                    ci_cum_weighted_sum += ci_cum[pi]
+                ci_cum_weighted_sum /= mean_divisor
+                cf_cum_profile[k] = ci_cum_weighted_sum
+
+        cf_cum_profile = Pa.domain_vector_sum(cf_cum_profile, Gr.dims.n[2])
+        NS.write_profile('cloud_cum_fraction', cf_cum_profile, Pa)
 
         # Compute cloud top and cloud base height
         cb = 99999.9
