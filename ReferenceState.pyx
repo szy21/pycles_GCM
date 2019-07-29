@@ -237,7 +237,7 @@ cdef class ReferenceState:
         return
 
 
-    cpdef init_from_restart(self, Grid.Grid Gr, Restart.Restart Re):
+    cpdef init_from_restart(self, Grid.Grid Gr, Restart.Restart Re, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa):
 
         self.Tg = Re.restart_data['Ref']['Tg']
         self.Pg = Re.restart_data['Ref']['Pg']
@@ -260,6 +260,29 @@ cdef class ReferenceState:
         self.rho0_global = 1.0 / Re.restart_data['Ref']['alpha0_global']
         self.rho0_half_global = 1.0 / Re.restart_data['Ref']['alpha0_half_global']
 
+        # Output pressure
+        units = r'Pa'
+        nice_name = r'p_{0}'
+        desc = r'reference state pressure at half level'
+        NS.add_reference_profile('p0', Gr, Pa, units=units, nice_name = nice_name, desc=desc)
+        NS.write_reference_profile('p0', self.p0_half[Gr.dims.gw:-Gr.dims.gw], Pa)
+
+        nice_name = r'p_{0}^{full}'
+        desc = r'reference state pressure at full level'
+        NS.add_reference_profile('p0_full', Gr, Pa, units=units, nice_name = nice_name, desc=desc, z_full=True)
+        NS.write_reference_profile('p0_full', self.p0[Gr.dims.gw:-Gr.dims.gw], Pa)
+
+        # Output densities
+        units = r'kgm^{-3}'
+        nice_name = r'\rho_{0}'
+        desc = r'reference state density at half level'
+        NS.add_reference_profile('rho0', Gr, Pa, units=units, nice_name = nice_name, desc=desc)
+        NS.write_reference_profile('rho0', 1.0 / np.array(self.alpha0_half[Gr.dims.gw:-Gr.dims.gw]), Pa)
+
+        nice_name = r'\rho_0^{full}'
+        desc = r'reference state density at full level'
+        NS.add_reference_profile('rho0_full', Gr, Pa, units=units, nice_name = nice_name, desc=desc, z_full=True)
+        NS.write_reference_profile('rho0_full', 1.0 / np.array(self.alpha0[Gr.dims.gw:-Gr.dims.gw]), Pa)
 
 
         return

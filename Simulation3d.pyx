@@ -114,7 +114,7 @@ class Simulation3d:
 
                 self.TS.t = self.Restart.restart_data['TS']['t']
                 self.TS.dt = self.Restart.restart_data['TS']['dt']
-                self.Ref.init_from_restart(self.Gr, self.Restart)
+                self.Ref.init_from_restart(self.Gr, self.Restart, self.StatsIO, self.Pa)
                 self.PV.init_from_restart(self.Gr, self.Restart)
                 self.Sur.init_from_restart(self.Restart)
                 self.StatsIO.last_output_time = self.Restart.restart_data['last_stats_output']
@@ -143,7 +143,7 @@ class Simulation3d:
                 self.Restart.last_restart_time = self.Restart.restart_data['last_restart_time']
                 self.VO.last_vis_time = self.Restart.restart_data['last_vis_time']
 
-                self.Ref.init_from_restart(self.Gr, self.Restart)
+                self.Ref.init_from_restart(self.Gr, self.Restart, self.StatsIO, self.Pa)
                 self.Sur.init_from_restart(self.Restart)
 
                 FillAlteredFields(namelist,self.Gr, self.PV, self.Ref, self.Th, self.StatsIO, self.Pa, self.LH, self.Restart)
