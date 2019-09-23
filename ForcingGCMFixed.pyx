@@ -130,7 +130,8 @@ cdef class ForcingGCMMean:
             self.temp_dt_fino = rdr.get_interp_profile_old('dt_tg_fino', Gr.zp_half)
             self.temp_dt_resid = rdr.get_interp_profile_old('dt_tg_real1', Gr.zp_half) - rdr.get_interp_profile_old('dt_tg_total', Gr.zp_half)
             self.shum_dt_hadv  = rdr.get_interp_profile_old('dt_qg_hadv', Gr.zp_half)
-            self.shum_dt_resid  = rdr.get_interp_profile_old('dt_qg_real1', Gr.zp_half) - rdr.get_interp_profile_old('dt_qg_total', Gr.zp_half)
+            #092119[ZS]: Change dt_qg_real1 to dt_qg_total since do_spec_tracer_filter=False in GCM
+            self.shum_dt_resid  = rdr.get_interp_profile_old('dt_qg_total', Gr.zp_half) - rdr.get_interp_profile_old('dt_qg_total', Gr.zp_half)
             #self.temp_dt_hadv = interp_pchip(Gr.zp_half, zfull, temp_dt_hadv)
             #self.temp_dt_fino = interp_pchip(Gr.zp_half, zfull, temp_dt_fino)
             #self.temp_dt_resid = interp_pchip(Gr.zp_half, zfull, temp_dt_resid)
