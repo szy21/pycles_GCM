@@ -42,6 +42,7 @@ cdef extern from "surface.h":
     double compute_ustar(double windspeed, double buoyancy_flux, double z0, double z1) nogil
     inline double entropyflux_from_thetaflux_qtflux(double thetaflux, double qtflux, double p0_b, double T_b, double qt_b, double qv_b) nogil
     void compute_windspeed(Grid.DimStruct *dims, double* u, double*  v, double*  speed, double u0, double v0, double gustiness ) nogil
+    void compute_windspeed_gust(Grid.DimStruct *dims, double* u, double*  v, double*  speed, double u0, double v0, double gustiness ) nogil
     void exchange_coefficients_byun(double Ri, double zb, double z0, double* cm, double* ch, double* lmo) nogil
 cdef extern from "entropies.h":
     inline double sd_c(double pd, double T) nogil
@@ -1243,7 +1244,7 @@ cdef class SurfaceGCMVarying(SurfaceBase):
 cdef class SurfaceGCMMean(SurfaceBase):
     def __init__(self, namelist, LatentHeat LH, ParallelMPI.ParallelMPI Pa):
 
-        self.gustiness = 0.001
+        #self.gustiness = 0.001
         self.z0 = 1.0e-5
         self.L_fp = LH.L_fp
         self.Lambda_fp = LH.Lambda_fp
@@ -1257,7 +1258,14 @@ cdef class SurfaceGCMMean(SurfaceBase):
             self.fixed_sfc_flux = namelist['surface']['fixed_sfc_flux']
         except:
             self.fixed_sfc_flux = False
-
+        try:
+            self.alt_gustiness = namelist['surface']['alt_gustiness']
+        except:
+            self.alt_gustiness = True
+        try:
+            self.gustiness = namelist['surface']['gustiness']
+        except:
+            self.gustiness = 0.001
         return
 
     cpdef initialize(self, Grid.Grid Gr, ReferenceState.ReferenceState Ref, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa):
@@ -1313,10 +1321,11 @@ cdef class SurfaceGCMMean(SurfaceBase):
         #     Pa.root_print('Finished updating time varying Gustiness: ' + str(self.gustiness))
 
 
-        self.gustiness = 0.00001
-
-        compute_windspeed(&Gr.dims, &PV.values[u_shift], &PV.values[v_shift], &windspeed[0], Ref.u0, Ref.v0, self.gustiness)
-
+        #self.gustiness = 0.00001
+        if self.alt_gustiness:
+            compute_windspeed(&Gr.dims, &PV.values[u_shift], &PV.values[v_shift], &windspeed[0], Ref.u0, Ref.v0, self.gustiness)
+        else:
+            compute_windspeed_gust(&Gr.dims, &PV.values[u_shift], &PV.values[v_shift], &windspeed[0], Ref.u0, Ref.v0, self.gustiness)
 
 
         cdef:

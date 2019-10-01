@@ -198,6 +198,7 @@ cdef class SurfaceGCMMean(SurfaceBase):
         double lat
         double lon
         bint fixed_sfc_flux
+        bint alt_gustiness
         int t_indx
         str file
         bint gcm_profiles_initialized
