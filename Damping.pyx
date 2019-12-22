@@ -106,9 +106,7 @@ cdef class RayleighGCMMeanNudge:
         self.gamma_z = np.zeros((Gr.dims.nlg[2]), dtype=np.double, order='c')
         z_top = Gr.zpl[Gr.dims.nlg[2] - Gr.dims.gw]
 
-
         #self.z_d = 20000.0 #122019[ZS]
-        print 'damp_scalar', self.damp_scalar
 
         with nogil:
             for k in range(Gr.dims.nlg[2]):
