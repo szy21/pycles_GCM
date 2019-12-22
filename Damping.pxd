@@ -30,6 +30,7 @@ cdef class RayleighGCMMeanNudge:
         double [:] dt_tg_total
         double [:] dt_qg_total
         bint gcm_profiles_initialized
+        bint damp_scalar
         int t_indx
         str file
         double lat

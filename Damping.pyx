@@ -83,6 +83,11 @@ cdef class RayleighGCMMeanNudge:
             Pa.root_print('Rayleigh damping gamm_r not given in namelist')
             Pa.root_print('Killing simulation now!')
             Pa.kill()
+        
+        try:
+            self.damp_scalar = namelist['damping']['Rayleigh']['damp_scalar']
+        except:
+            self.damp_scalar = False
 
         self.gcm_profiles_initialized = False
         self.t_indx = 0
@@ -101,8 +106,8 @@ cdef class RayleighGCMMeanNudge:
         self.gamma_z = np.zeros((Gr.dims.nlg[2]), dtype=np.double, order='c')
         z_top = Gr.zpl[Gr.dims.nlg[2] - Gr.dims.gw]
 
+        #self.z_d = 20000.0 #122019[ZS]
 
-        self.z_d = 20000.0
         with nogil:
             for k in range(Gr.dims.nlg[2]):
                 if Gr.zpl_half[k] >= z_top - self.z_d:
@@ -242,7 +247,8 @@ cdef class RayleighGCMMeanNudge:
                             for k in xrange(kmin, kmax):
                                 ijk = ishift + jshift + k
                                 PV.tendencies[var_shift + ijk] -= (PV.values[var_shift + ijk] - domain_mean[k]) * self.gamma_z[k]
-            else:
+            elif self.damp_scalar:
+                Pa.root_print('Damping scalar')
                 with nogil:
                     for i in xrange(imin, imax):
                         ishift = i * istride
@@ -299,7 +305,7 @@ cdef class RayleighGCMMean:
         try:
             self.gamma_r = namelist['damping']['Rayleigh']['gamma_r']
         except:
-            Pa.root_print('Rayleigh damping gamm_r not given in namelist')
+            Pa.root_print('Rayleigh damping gamma_r not given in namelist')
             Pa.root_print('Killing simulation now!')
             Pa.kill()
 
@@ -338,7 +344,7 @@ cdef class RayleighGCMMean:
         fh.close()
 
 
-        #Compute height for daimping profiles
+        #Compute height for damping profiles
         #dt_qg_conv = np.mean(input_data_tv['dt_qg_param'][:,::-1],axis=0)
         zfull = np.mean(input_data_tv['zfull'][:,::-1], axis=0)
         temp = np.mean(input_data_tv['temp'][:,::-1],axis=0)
@@ -485,10 +491,10 @@ cdef class RayleighGCMMean:
                         pd = pd_c(p0,qt,qv)
                         pv = pv_c(p0,qt,qv)
                         t  = DV.values[t_shift + ijk]
-                        PV.tendencies[s_shift + ijk] =   (weight)*PV.tendencies[s_shift + ijk]
+                        PV.tendencies[s_shift + ijk] =   (weight) * PV.tendencies[s_shift + ijk]
                         #PV.tendencies[s_shift + ijk] += (sv_c(pv,t) - sd_c(pd,t)) * (self.dt_qg_total[k]* (1.0 -weight) ) + (1.0 - weight) * (cpm_c(qt) * (self.dt_tg_total[k]))/t
                         #PV.tendencies[qt_shift + ijk] = self.dt_qg_total[k]* (1.0 - weight) + PV.tendencies[qt_shift + ijk] *(weight)
-                        PV.tendencies[qt_shift + ijk] = PV.tendencies[qt_shift + ijk] *(weight)
+                        PV.tendencies[qt_shift + ijk] = PV.tendencies[qt_shift + ijk] * (weight)
                         PV.tendencies[u_shift + ijk] = (weight) * PV.tendencies[u_shift + ijk]
                         PV.tendencies[v_shift + ijk] = (weight) * PV.tendencies[v_shift + ijk] 
 
