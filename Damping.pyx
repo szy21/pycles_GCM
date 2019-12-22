@@ -87,7 +87,7 @@ cdef class RayleighGCMMeanNudge:
         try:
             self.damp_scalar = namelist['damping']['Rayleigh']['damp_scalar']
         except:
-            self.damp_scalar = True
+            self.damp_scalar = False
 
         self.gcm_profiles_initialized = False
         self.t_indx = 0
@@ -108,8 +108,6 @@ cdef class RayleighGCMMeanNudge:
 
 
         #self.z_d = 20000.0 #122019[ZS]
-        print 'gamma_r', self.gamma_r
-        print 'z_d', self.z_d
         print 'damp_scalar', self.damp_scalar
 
         with nogil:
@@ -252,7 +250,7 @@ cdef class RayleighGCMMeanNudge:
                                 ijk = ishift + jshift + k
                                 PV.tendencies[var_shift + ijk] -= (PV.values[var_shift + ijk] - domain_mean[k]) * self.gamma_z[k]
             elif self.damp_scalar:
-                print "Damping scalars"
+                Pa.root_print('Damping scalar')
                 with nogil:
                     for i in xrange(imin, imax):
                         ishift = i * istride
