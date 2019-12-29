@@ -4,7 +4,7 @@
 #cython: initializedcheck=False
 #cython: cdivision=True
 
-from libc.math cimport fmin, fmax, sin, tanh
+from libc.math cimport fmin, fmax, sin
 import cython
 import netCDF4 as nc
 import numpy as np
@@ -140,7 +140,6 @@ cdef class RayleighGCMMeanNudge:
         z_top = Gr.zpl[Gr.dims.nlg[2] - Gr.dims.gw]
 
         #self.z_d = 20000.0 #122019[ZS]
-        print "relax_wind", self.relax_wind
         with nogil:
             for k in range(Gr.dims.nlg[2]):
                 if Gr.zpl_half[k] >= z_top - self.z_d:
