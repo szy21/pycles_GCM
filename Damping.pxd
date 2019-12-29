@@ -22,15 +22,24 @@ cdef class RayleighGCMMeanNudge:
     cdef:
         double z_d  # Depth of damping layer
         double gamma_r  # Inverse damping timescale
+        double tau_max  # Maximum damping timescale
+        double z_r  # Depth of relaxation layer
+        double tau_wind  # Wind relaxation timescale
         double[:] gamma_zhalf
         double[:] gamma_z
+        double[:] xi_z
+        double[:] ucomp
+        double[:] vcomp
         double[:] tend_flat
         double[:] tend_flat_half
         double tend_flat_z_d
         double [:] dt_tg_total
         double [:] dt_qg_total
         bint gcm_profiles_initialized
+        bint truncate
+        bint damp_w
         bint damp_scalar
+        bint relax_wind
         int t_indx
         str file
         double lat
