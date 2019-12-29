@@ -251,8 +251,8 @@ cdef class ForcingGCMMean:
 
         #Apply Coriolis Forcing
         coriolis_force(&Gr.dims,&PV.values[u_shift],&PV.values[v_shift],&PV.tendencies[u_shift],
-                       &PV.tendencies[v_shift],&self.ug[0], &self.vg[0],self.coriolis_param, Ref.u0, Ref.v0  )
-
+                       &PV.tendencies[v_shift],&self.ug[0], &self.vg[0],self.coriolis_param, Ref.u0, Ref.v0)
+        
         cdef double [:] dtdt_pdv = np.zeros(Gr.dims.npg, dtype=np.double)
         # Apply Subsidence
         if 's' in PV.name_index:

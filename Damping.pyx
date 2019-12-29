@@ -4,7 +4,7 @@
 #cython: initializedcheck=False
 #cython: cdivision=True
 
-from libc.math cimport fmin, fmax, sin
+from libc.math cimport fmin, fmax, sin, tanh
 import cython
 import netCDF4 as nc
 import numpy as np
@@ -76,7 +76,7 @@ cdef class RayleighGCMMeanNudge:
             Pa.root_print('Rayleigh damping z_d not given in namelist')
             Pa.root_print('Killing simulation now!')
             Pa.kill()
-
+        
         try:
             self.gamma_r = namelist['damping']['Rayleigh']['gamma_r']
         except:
@@ -85,9 +85,39 @@ cdef class RayleighGCMMeanNudge:
             Pa.kill()
         
         try:
+            self.truncate = namelist['damping']['Rayleigh']['truncate']
+        except:
+            self.truncate = False
+        
+        try:
+            self.tau_max = namelist['damping']['Rayleigh']['tau_max']
+        except:
+            self.tau_max = 43200.0
+
+        try:
             self.damp_scalar = namelist['damping']['Rayleigh']['damp_scalar']
         except:
             self.damp_scalar = False
+        
+        try:
+            self.damp_scalar = namelist['damping']['Rayleigh']['damp_w']
+        except:
+            self.damp_w = False
+
+        try:
+            self.relax_wind = namelist['damping']['Rayleigh']['relax_wind']
+        except:
+            self.relax_wind = False
+        
+        try:
+            self.z_r = namelist['damping']['Rayleigh']['z_r']
+        except:
+            self.z_r = 10000.0
+
+        try:
+            self.tau_wind = namelist['damping']['Rayleigh']['tau_wind']
+        except:
+            self.tau_wind = 86400.0
 
         self.gcm_profiles_initialized = False
         self.t_indx = 0
@@ -104,10 +134,13 @@ cdef class RayleighGCMMeanNudge:
             dtype=np.double,
             order='c')
         self.gamma_z = np.zeros((Gr.dims.nlg[2]), dtype=np.double, order='c')
+        self.xi_z = np.zeros((Gr.dims.nlg[2]), dtype=np.double, order='c')
+        self.ucomp = np.zeros((Gr.dims.nlg[2]), dtype=np.double, order='c')
+        self.vcomp = np.zeros((Gr.dims.nlg[2]), dtype=np.double, order='c')
         z_top = Gr.zpl[Gr.dims.nlg[2] - Gr.dims.gw]
 
         #self.z_d = 20000.0 #122019[ZS]
-
+        print "relax_wind", self.relax_wind
         with nogil:
             for k in range(Gr.dims.nlg[2]):
                 if Gr.zpl_half[k] >= z_top - self.z_d:
@@ -116,8 +149,23 @@ cdef class RayleighGCMMeanNudge:
                 if Gr.zpl[k] >= z_top - self.z_d:
                     self.gamma_z[
                         k] = self.gamma_r * sin((pi / 2.0) * (1.0 - (z_top - Gr.zpl[k]) / self.z_d))**2.0
-
-
+        if self.relax_wind:
+            with nogil:
+                for k in range(Gr.dims.nlg[2]):
+                    if Gr.zpl[k] >= z_top - self.z_r:
+                        self.xi_z[k] = 1.0 / self.tau_wind
+        #with nogil:
+        #    for k in range(Gr.dims.nlg[2]):
+        #        self.gamma_zhalf[k] = self.gamma_r * (0.5 + 0.5 * tanh((Gr.zpl_half[k] - self.z_d) / self.h))
+        #        self.gamma_z[k] = self.gamma_r * (0.5 + 0.5 * tanh((Gr.zpl[k] - self.z_d) / self.h))
+        
+        if self.truncate:
+            with nogil:
+                for k in range(Gr.dims.nlg[2]):
+                    if self.gamma_zhalf[k] < 1.0 / self.tau_max:
+                        self.gamma_zhalf[k] = 1.0 / self.tau_max
+                    if self.gamma_z[k] < 1.0 / self.tau_max:
+                        self.gamma_z[k] = 1.0 / self.tau_max
 #        import pylab as plt
 #        plt.figure()
 #        plt.plot(self.gamma_z)
@@ -133,10 +181,12 @@ cdef class RayleighGCMMeanNudge:
 
         rdr = reader(self.file, self.lat, self.lon)
 
-        #Compute height for daimping profiles
+        #Compute height for damping profiles
         #dt_qg_conv = np.mean(input_data_tv['dt_qg_param'][:,::-1],axis=0)
         #zfull = rdr.get_profile_mean('height')#np.mean(input_data_tv['zfull'][:,::-1], axis=0)
         temp = rdr.get_interp_profile('temp', Gr.zp_half)
+        self.ucomp = rdr.get_interp_profile('ucomp', Gr.zp_half)
+        self.vcomp = rdr.get_interp_profile('vcomp', Gr.zp_half)
         #temp = interp_pchip(Gr.zp_half, zfull, temp)
         #import pylab as plt
         #plt.plot(np.abs(dt_qg_conv))
@@ -192,6 +242,8 @@ cdef class RayleighGCMMeanNudge:
             Py_ssize_t jstride = Gr.dims.nlg[2]
             Py_ssize_t i, j, k, ishift, jshift, ijk
             double[:] domain_mean
+            double[:] u_mean
+            double[:] v_mean
             Py_ssize_t t_shift = DV.get_varshift(Gr, 'temperature')
             Py_ssize_t ql_shift = DV.get_varshift(Gr,'ql')
             Py_ssize_t qt_shift = PV.get_varshift(Gr, 'qt')
@@ -228,7 +280,8 @@ cdef class RayleighGCMMeanNudge:
         for var_name in PV.name_index:
             var_shift = PV.get_varshift(Gr, var_name)
             domain_mean = Pa.HorizontalMean(Gr, & PV.values[var_shift])
-            if var_name == 'w':
+            if var_name == 'w' and self.damp_w:
+                Pa.root_print('Damping w')
                 with nogil:
                     for i in xrange(imin, imax):
                         ishift = i * istride
@@ -258,6 +311,20 @@ cdef class RayleighGCMMeanNudge:
                                 ijk = ishift + jshift + k
                                 #PV.tendencies[var_shift + ijk] *= self.tend_flat[k]
                                 PV.tendencies[var_shift + ijk] -= (PV.values[var_shift + ijk] - domain_mean[k]) * self.gamma_z[k]
+        u_shift = PV.get_varshift(Gr, 'u')
+        u_mean = Pa.HorizontalMean(Gr, & PV.values[u_shift])
+        v_shift = PV.get_varshift(Gr, 'v')
+        v_mean = Pa.HorizontalMean(Gr, & PV.values[v_shift])
+        if self.relax_wind:
+            with nogil:
+                for i in xrange(imin, imax):
+                    ishift = i * istride
+                    for j in xrange(jmin, jmax):
+                        jshift = j * jstride
+                        for k in xrange(kmin, kmax):
+                            ijk = ishift + jshift + k
+                            PV.tendencies[u_shift + ijk] -= (u_mean[k] - self.ucomp[k]) * self.xi_z[k]
+                            PV.tendencies[v_shift + ijk] -= (v_mean[k] - self.vcomp[k]) * self.xi_z[k]
 
         # if 's' in PV.name_index:
         #     s_shift = PV.get_varshift(Gr, 's')
