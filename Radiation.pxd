@@ -86,6 +86,14 @@ cdef class RadiationRRTM(RadiationBase):
         Py_ssize_t n_ext
         double stretch_factor
         double patch_pressure
+        double [:] lw_flux_up
+        double [:] lw_flux_up_clr
+        double [:] lw_flux_down
+        double [:] lw_flux_down_clr
+        double [:] sw_flux_up
+        double [:] sw_flux_up_clr
+        double [:] sw_flux_down
+        double [:] sw_flux_down_clr
         double [:] p_ext
         double [:] t_ext
         double [:] rv_ext
@@ -99,6 +107,7 @@ cdef class RadiationRRTM(RadiationBase):
         double scon
         double adjes
         double solar_constant
+        double toa_sw
         double coszen
         double adif
         double adir
