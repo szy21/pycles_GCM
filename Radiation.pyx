@@ -459,7 +459,7 @@ cdef class RadiationRRTM(RadiationBase):
             self.Pg_adiabat = 1000.0e2
             self.RH_adiabat = 0.3
         elif casename == 'GCMMean':
-            self.profile_name = 'cgils_ctl_s6'
+            self.profile_name = 'gcm_mean'
 
         else:
             Pa.root_print('RadiationRRTM: Case ' + casename + ' has no known extension profile')
