@@ -15,6 +15,8 @@ cdef class ForcingGCMMean:
         double [:] ug
         double [:] vg
         double [:] subsidence
+        double [:] temp
+        double [:] shum
         double [:] temp_dt_hadv
         double [:] temp_dt_fino
         double [:] temp_dt_resid
@@ -42,6 +44,10 @@ cdef class ForcingGCMMean:
         double [:] rho_gcm
         double [:] rho_half_gcm
         double coriolis_param
+        bint relax_scalar
+        double tau_scalar
+        double [:] qt_tend_nudge
+        double [:] t_tend_nudge
         str file
         double lat
         double lon

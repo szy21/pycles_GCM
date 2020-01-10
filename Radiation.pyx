@@ -458,6 +458,8 @@ cdef class RadiationRRTM(RadiationBase):
             self.Tg_adiabat = 295.0
             self.Pg_adiabat = 1000.0e2
             self.RH_adiabat = 0.3
+        elif casename == 'GCMMean':
+            self.profile_name = 'gcm_mean'
 
         else:
             Pa.root_print('RadiationRRTM: Case ' + casename + ' has no known extension profile')
@@ -505,12 +507,20 @@ cdef class RadiationRRTM(RadiationBase):
         except:
             Pa.root_print('Solar Constant not set so RadiationRRTM takes default value: scon = 1360.0 .')
             self.scon = 1360.0
+        try:
+            self.toa_sw = namelist['radiation']['RRTM']['toa_sw']
+        except:
+            Pa.root_print('TOA shortwave not set so RadiationRRTM takes default value: toa_sw = 420.0 .')
+            self.toa_sw = 420.0
 
         try:
-            self.coszen =namelist['radiation']['RRTM']['coszen']
+            self.coszen = namelist['radiation']['RRTM']['coszen']
         except:
-            Pa.root_print('Mean Daytime cos(SZA) not set so RadiationRRTM takes default value: coszen = 2.0/pi .')
-            self.coszen = 2.0/pi
+            if (self.toa_sw > 420.0):
+                self.coszen = self.toa_sw / self.scon 
+            else:
+                Pa.root_print('Mean Daytime cos(SZA) not set so RadiationRRTM takes default value: coszen = 2.0/pi .')
+                self.coszen = 2.0/pi
 
         try:
             self.adif = namelist['radiation']['RRTM']['adif']
@@ -522,7 +532,7 @@ cdef class RadiationRRTM(RadiationBase):
             self.adir = namelist['radiation']['RRTM']['adir']
         except:
             if (self.coszen > 0.0):
-                self.adir = (.026/(self.coszen**1.7 + .065)+(.15*(self.coszen-0.10)*(self.coszen-0.50)*(self.coszen- 1.00)))
+                self.adir = (.026/(self.coszen**1.7+.065) + (.15*(self.coszen-0.10)*(self.coszen-0.50)*(self.coszen-1.00)))
             else:
                 self.adir = 0.0
             Pa.root_print('Surface direct albedo not set so RadiationRRTM computes value: adif = %5.4f .'%(self.adir))
@@ -549,6 +559,24 @@ cdef class RadiationRRTM(RadiationBase):
 
 
     cpdef initialize(self, Grid.Grid Gr,  NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa):
+
+        self.lw_flux_up = np.zeros((Gr.dims.npg,), dtype=np.double, order='c')
+        self.lw_flux_up_clr = np.zeros((Gr.dims.npg,), dtype=np.double, order='c')
+        self.lw_flux_down = np.zeros((Gr.dims.npg,), dtype=np.double, order='c')
+        self.lw_flux_down_clr = np.zeros((Gr.dims.npg,), dtype=np.double, order='c')
+        self.sw_flux_up = np.zeros((Gr.dims.npg,), dtype=np.double, order='c')
+        self.sw_flux_up_clr = np.zeros((Gr.dims.npg,), dtype=np.double, order='c')
+        self.sw_flux_down = np.zeros((Gr.dims.npg,), dtype=np.double, order='c')
+        self.sw_flux_down_clr = np.zeros((Gr.dims.npg,), dtype=np.double, order='c')
+
+        NS.add_profile('lw_flux_up', Gr, Pa )
+        NS.add_profile('lw_flux_up_clr', Gr, Pa )
+        NS.add_profile('lw_flux_down', Gr, Pa)
+        NS.add_profile('lw_flux_down_clr', Gr, Pa)
+        NS.add_profile('sw_flux_up', Gr, Pa)
+        NS.add_profile('sw_flux_up_clr', Gr, Pa)
+        NS.add_profile('sw_flux_down', Gr, Pa)
+        NS.add_profile('sw_flux_down_clr', Gr, Pa)
 
         RadiationBase.initialize(self, Gr, NS, Pa)
         return
@@ -854,6 +882,7 @@ cdef class RadiationRRTM(RadiationBase):
             double [:,:] ql_pencil = self.z_pencil.forward_double(&Gr.dims, Pa, &DV.values[ql_shift])
             double [:,:] qi_pencil = np.zeros((n_pencils,nz),dtype=np.double, order='c')
             double [:,:] rl_full = np.zeros((n_pencils,nz_full), dtype=np.double, order='F')
+            double [:,:] ri_full = np.zeros((n_pencils,nz_full), dtype=np.double, order='F')
             Py_ssize_t k, ip
             bint use_ice = False
             Py_ssize_t gw = Gr.dims.gw
@@ -934,6 +963,7 @@ cdef class RadiationRRTM(RadiationBase):
                     tlay_in[ip,k] = t_pencil[ip,k]
                     h2ovmr_in[ip,k] = qv_pencil[ip,k]/ (1.0 - qv_pencil[ip,k])* Rv/Rd * self.h2o_factor
                     rl_full[ip,k] = (ql_pencil[ip,k])/ (1.0 - qv_pencil[ip,k])
+                    ri_full[ip,k] = (qi_pencil[ip,k])/ (1.0 - qv_pencil[ip,k])
                     cliqwp_in[ip,k] = ((ql_pencil[ip,k])/ (1.0 - qv_pencil[ip,k])
                                        *1.0e3*(self.pi_full[k] - self.pi_full[k+1])/g)
                     cicewp_in[ip,k] = ((qi_pencil[ip,k])/ (1.0 - qv_pencil[ip,k])
@@ -963,6 +993,12 @@ cdef class RadiationRRTM(RadiationBase):
                         reliq_in[ip, k] = ((3.0*self.p_full[k]/Rd/tlay_in[ip,k]*rl_full[ip,k]/
                                                     fmax(cldfr_in[ip,k],1.0e-6))/(4.0*pi*1.0e3*100.0))**(1.0/3.0)
                         reliq_in[ip, k] = fmin(fmax(reliq_in[ip, k]*rv_to_reff, 2.5), 60.0)
+                    # Boudala et al. (2002) Eqn 10a, this is dge (generalized effective size),
+                    # and is what iceflglw=3 calls for. Will only work with iceflglw=iceflgsw=3!
+                    reice_in[ip,k] = 53.005 * ((self.p_full[k]/Rd/tlay_in[ip,k]*ri_full[ip,k]*1.0e3)/
+                                            fmax(cldfr_in[ip,k],1.0e-6)) ** 0.06 \
+                                      * exp(0.013*(tlay_in[ip,k] - 273.16))
+                    reice_in[ip,k] = fmin(fmax(reice_in[ip,k], 5.0), 140.0) # Threshold from rrtmg sw instruction
 
             for ip in xrange(n_pencils):
                 tlev_in[ip, 0] = Sur.T_surface
@@ -1010,6 +1046,14 @@ cdef class RadiationRRTM(RadiationBase):
              &tauaer_sw_in[0,0,0]  ,&ssaaer_sw_in[0,0,0]  ,&asmaer_sw_in[0,0,0]  ,&ecaer_sw_in[0,0,0]   ,
              &uflx_sw_out[0,0]    ,&dflx_sw_out[0,0]    ,&hr_sw_out[0,0]      ,&uflxc_sw_out[0,0]   ,&dflxc_sw_out[0,0], &hrc_sw_out[0,0])
 
+        cdef double [:,:] lw_flux_up_pencil = np.zeros((n_pencils,nz), dtype=np.double, order='c')
+        cdef double [:,:] lw_flux_up_clr_pencil = np.zeros((n_pencils,nz), dtype=np.double, order='c')
+        cdef double [:,:] lw_flux_down_pencil = np.zeros((n_pencils,nz), dtype=np.double, order='c')
+        cdef double [:,:] lw_flux_down_clr_pencil = np.zeros((n_pencils,nz), dtype=np.double, order='c')
+        cdef double [:,:] sw_flux_up_pencil = np.zeros((n_pencils,nz), dtype=np.double, order='c')
+        cdef double [:,:] sw_flux_up_clr_pencil = np.zeros((n_pencils,nz), dtype=np.double, order='c')
+        cdef double [:,:] sw_flux_down_pencil = np.zeros((n_pencils,nz), dtype=np.double, order='c')
+        cdef double [:,:] sw_flux_down_clr_pencil = np.zeros((n_pencils,nz), dtype=np.double, order='c')
         cdef double [:,:] heating_rate_pencil = np.zeros((n_pencils,nz), dtype=np.double, order='c')
         cdef double srf_lw_up_local =0.0, srf_lw_down_local=0.0, srf_sw_up_local=0.0, srf_sw_down_local=0.0
         cdef double nxny_i = 1.0/(Gr.dims.n[0]*Gr.dims.n[1])
@@ -1020,18 +1064,53 @@ cdef class RadiationRRTM(RadiationBase):
                srf_sw_up_local   +=  uflx_sw_out[ip,0] * nxny_i
                srf_sw_down_local += dflx_sw_out[ip,0] * nxny_i
                for k in xrange(nz):
-                   heating_rate_pencil[ip, k] = (hr_lw_out[ip,k] + hr_sw_out[ip,k]) * Ref.rho0_half_global[k+gw] * cpm_c(qv_pencil[ip,k])/86400.0
+                   lw_flux_up_pencil[ip,k] = uflx_lw_out[ip,k]
+                   lw_flux_up_clr_pencil[ip,k] = uflxc_lw_out[ip,k]
+                   lw_flux_down_pencil[ip,k] = dflx_lw_out[ip,k]
+                   lw_flux_down_clr_pencil[ip,k] = dflxc_lw_out[ip,k]
+                   sw_flux_up_pencil[ip,k] = uflx_sw_out[ip,k]
+                   sw_flux_up_clr_pencil[ip,k] = uflxc_sw_out[ip,k]
+                   sw_flux_down_pencil[ip,k] = dflx_sw_out[ip,k]
+                   sw_flux_down_clr_pencil[ip,k] = dflxc_sw_out[ip,k]
+                   heating_rate_pencil[ip,k] = (hr_lw_out[ip,k] + hr_sw_out[ip,k]) * Ref.rho0_half_global[k+gw] * cpm_c(qv_pencil[ip,k])/86400.0
 
         self.srf_lw_up = Pa.domain_scalar_sum(srf_lw_up_local)
         self.srf_lw_down = Pa.domain_scalar_sum(srf_lw_down_local)
         self.srf_sw_up= Pa.domain_scalar_sum(srf_sw_up_local)
         self.srf_sw_down= Pa.domain_scalar_sum(srf_sw_down_local)
 
+        self.z_pencil.reverse_double(&Gr.dims, Pa, lw_flux_up_pencil, &self.lw_flux_up[0])
+        self.z_pencil.reverse_double(&Gr.dims, Pa, lw_flux_up_clr_pencil, &self.lw_flux_up_clr[0])
+        self.z_pencil.reverse_double(&Gr.dims, Pa, lw_flux_down_pencil, &self.lw_flux_down[0])
+        self.z_pencil.reverse_double(&Gr.dims, Pa, lw_flux_down_clr_pencil, &self.lw_flux_down_clr[0])
+        self.z_pencil.reverse_double(&Gr.dims, Pa, sw_flux_up_pencil, &self.sw_flux_up[0])
+        self.z_pencil.reverse_double(&Gr.dims, Pa, sw_flux_up_clr_pencil, &self.sw_flux_up_clr[0])
+        self.z_pencil.reverse_double(&Gr.dims, Pa, sw_flux_down_pencil, &self.sw_flux_down[0])
+        self.z_pencil.reverse_double(&Gr.dims, Pa, sw_flux_down_clr_pencil, &self.sw_flux_down_clr[0])
         self.z_pencil.reverse_double(&Gr.dims, Pa, heating_rate_pencil, &self.heating_rate[0])
 
         return
     cpdef stats_io(self, Grid.Grid Gr, ReferenceState.ReferenceState Ref, DiagnosticVariables.DiagnosticVariables DV,
                    NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa):
+
+        cdef double [:] tmp
+        
+        tmp = Pa.HorizontalMean(Gr, &self.lw_flux_up[0])
+        NS.write_profile('lw_flux_up', tmp[Gr.dims.gw:-Gr.dims.gw], Pa)
+        tmp = Pa.HorizontalMean(Gr, &self.lw_flux_up_clr[0])
+        NS.write_profile('lw_flux_up_clr', tmp[Gr.dims.gw:-Gr.dims.gw], Pa)
+        tmp = Pa.HorizontalMean(Gr, &self.lw_flux_down[0])
+        NS.write_profile('lw_flux_down', tmp[Gr.dims.gw:-Gr.dims.gw], Pa)
+        tmp = Pa.HorizontalMean(Gr, &self.lw_flux_down_clr[0])
+        NS.write_profile('lw_flux_down_clr', tmp[Gr.dims.gw:-Gr.dims.gw], Pa)
+        tmp = Pa.HorizontalMean(Gr, &self.sw_flux_up[0])
+        NS.write_profile('sw_flux_up', tmp[Gr.dims.gw:-Gr.dims.gw], Pa)
+        tmp = Pa.HorizontalMean(Gr, &self.sw_flux_up_clr[0])
+        NS.write_profile('sw_flux_up_clr', tmp[Gr.dims.gw:-Gr.dims.gw], Pa)
+        tmp = Pa.HorizontalMean(Gr, &self.sw_flux_down[0])
+        NS.write_profile('sw_flux_down', tmp[Gr.dims.gw:-Gr.dims.gw], Pa)
+        tmp = Pa.HorizontalMean(Gr, &self.sw_flux_down_clr[0])
+        NS.write_profile('sw_flux_down_clr', tmp[Gr.dims.gw:-Gr.dims.gw], Pa)
 
         RadiationBase.stats_io(self, Gr, Ref, DV, NS,  Pa)
 

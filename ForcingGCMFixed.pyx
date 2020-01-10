@@ -35,6 +35,14 @@ cdef class ForcingGCMMean:
         self.file = str(namelist['gcm']['file'])
         self.lat = namelist['gcm']['lat']
         self.lon = namelist['gcm']['lon']
+        try:
+            self.relax_scalar = namelist['forcing']['relax_scalar']
+        except:
+            self.relax_scalar = False
+        try:
+            self.tau_scalar = namelist['forcing']['tau_scalar']
+        except:
+            self.tau_scalar = 21600.0
         self.gcm_profiles_initialized = False
         self.t_indx = 0
         return
@@ -43,16 +51,20 @@ cdef class ForcingGCMMean:
     cpdef initialize(self, Grid.Grid Gr,ReferenceState.ReferenceState Ref, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa):
 
         self.coriolis_param = 2.0 * omega * sin(self.lat * pi / 180.0 )
+        self.qt_tend_nudge = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
+        self.t_tend_nudge = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
 
         NS.add_profile('ls_subsidence', Gr, Pa)
         NS.add_profile('ls_dtdt_hadv', Gr, Pa)
         NS.add_profile('ls_dtdt_fino', Gr, Pa)
         NS.add_profile('ls_dtdt_resid', Gr, Pa)
         NS.add_profile('ls_dtdt_fluc', Gr, Pa)
+        NS.add_profile('dtdt_nudge', Gr, Pa)
         NS.add_profile('ls_dsdt_hadv', Gr, Pa)
         NS.add_profile('ls_dqtdt_hadv', Gr, Pa)
         NS.add_profile('ls_dqtdt_resid', Gr, Pa)
         NS.add_profile('ls_dqtdt_fluc', Gr, Pa)
+        NS.add_profile('dqtdt_nudge', Gr, Pa)
         NS.add_profile('ls_subs_dtdt', Gr, Pa)
         NS.add_profile('ls_subs_dsdt', Gr, Pa)
         NS.add_profile('ls_fino_dsdt', Gr, Pa)
@@ -85,6 +97,8 @@ cdef class ForcingGCMMean:
             double pd, pv, qt, qv, p0, rho0, t
             double zmax, weight, weight_half
             double u0_new, v0_new
+            double [:] qt_mean = Pa.HorizontalMean(Gr, &PV.values[qt_shift])
+            double [:] t_mean = Pa.HorizontalMean(Gr, &DV.values[t_shift])
 
         if not self.gcm_profiles_initialized:
             self.t_indx = int(TS.t // (3600.0 * 6.0))
@@ -125,6 +139,8 @@ cdef class ForcingGCMMean:
             alpha = rdr.get_interp_profile_old('alpha', Gr.zp_half)
             self.subsidence =  -np.array(self.omega_vv) * alpha / g
 
+            self.temp = rdr.get_interp_profile_old('temp', Gr.zp_half)
+            self.shum = rdr.get_interp_profile_old('sphum', Gr.zp_half)
 
             self.temp_dt_hadv  = rdr.get_interp_profile_old('dt_tg_hadv', Gr.zp_half)
             self.temp_dt_fino = rdr.get_interp_profile_old('dt_tg_fino', Gr.zp_half)
@@ -156,17 +172,10 @@ cdef class ForcingGCMMean:
 
             '''
 
-
             temp_dt_vadv_interp = rdr.get_interp_profile('dt_tg_vadv', Gr.zp_half)#interp_pchip(Gr.zp_half, zfull, temp_dt_vadv)
-
-
-
-
-
             temp_at_zp  = rdr.get_interp_profile('temp', Gr.zp) #interp_pchip(Gr.zp, zfull, temp)
             temp_vadv_pp = np.zeros(np.shape(self.temp_dt_hadv))
             temp_vadv_ppp = np.zeros(np.shape(self.temp_dt_hadv))
-
 
             shum_dt_vadv_interp = rdr.get_interp_profile('dt_qg_vadv', Gr.zp_half)#interp_pchip(Gr.zp_half, zfull, shum_dt_vadv)
             shum_at_zp = rdr.get_interp_profile('sphum', Gr.zp)#interp_pchip(Gr.zp, zfull, shum)
@@ -196,7 +205,7 @@ cdef class ForcingGCMMean:
 
             # import pylab as plt
             from scipy.signal import savgol_filter
-            #Smoothing flucation source terms is helpful becuase taking the vertical derivative of interpolated GCM
+            #Smoothing flucation source terms is helpful because taking the vertical derivative of interpolated GCM
             #fields is noisy
             self.temp_dt_fluc = temp_vadv_pp #savgol_filter(temp_vadv_pp, 5, 3 )
             self.shum_dt_fluc = shum_vadv_pp  #savgol_filter(shum_vadv_pp, 5, 3 )
@@ -209,10 +218,7 @@ cdef class ForcingGCMMean:
             #import sys; sys.exit()
 
 
-
-
             #temp_dt_vadv = interp_pchip(Gr.zp_half, zfull, temp_dt_vadv)
-
 
 
             self.rho_gcm =  1.0 / rdr.get_interp_profile('alpha', Gr.zp)
@@ -271,6 +277,16 @@ cdef class ForcingGCMMean:
         #apply_subsidence(&Gr.dims, &self.rho_gcm[0], &self.rho_half_gcm[0], &self.subsidence[0], &PV.values[qt_shift], &qt_tend_tmp[0])
         apply_subsidence(&Gr.dims, &Ref.rho0[0], &Ref.rho0_half[0], &self.subsidence[0], &PV.values[qt_shift], &qt_tend_tmp[0])
 
+        # Relaxation
+        cdef double [:] xi_relax = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
+        if self.relax_scalar:
+            with nogil:
+                for k in xrange(Gr.dims.nlg[2]):
+                    xi_relax[k] = 1.0 / self.tau_scalar
+                    # Nudging rates
+                    self.qt_tend_nudge[k] = -xi_relax[k] * (qt_mean[k] - self.shum[k])
+                    self.t_tend_nudge[k]  = -xi_relax[k] * (t_mean[k] - self.temp[k])
+
         if 's' in PV.name_index:
             s_shift = PV.get_varshift(Gr, 's')
             with nogil:
@@ -288,9 +304,9 @@ cdef class ForcingGCMMean:
                             pv = pv_c(p0,qt,qv)
                             t  = DV.values[t_shift + ijk]
 
-                            PV.tendencies[s_shift + ijk] += (cpm_c(qt) * (self.temp_dt_resid[k] + self.temp_dt_hadv[k] + self.temp_dt_fino[k]*0.0 + self.temp_dt_fluc[k] + dtdt_pdv[ijk]))/t
-                            PV.tendencies[s_shift + ijk] += (sv_c(pv,t) - sd_c(pd,t)) * ( self.shum_dt_resid[k] + self.shum_dt_hadv[k]  + qt_tend_tmp[ijk]  + self.shum_dt_fluc[k])
-                            PV.tendencies[qt_shift + ijk] += (self.shum_dt_resid[k] + self.shum_dt_hadv[k] + qt_tend_tmp[ijk] + self.shum_dt_fluc[k])
+                            PV.tendencies[s_shift + ijk] += (cpm_c(qt) * (self.temp_dt_resid[k] + self.temp_dt_hadv[k] + self.temp_dt_fino[k]*0.0 + self.temp_dt_fluc[k] + dtdt_pdv[ijk] + self.t_tend_nudge[k]))/t
+                            PV.tendencies[s_shift + ijk] += (sv_c(pv,t) - sd_c(pd,t)) * ( self.shum_dt_resid[k] + self.shum_dt_hadv[k]  + qt_tend_tmp[ijk]  + self.shum_dt_fluc[k] + self.qt_tend_nudge[k])
+                            PV.tendencies[qt_shift + ijk] += (self.shum_dt_resid[k] + self.shum_dt_hadv[k] + qt_tend_tmp[ijk] + self.shum_dt_fluc[k] + self.qt_tend_nudge[k])
                             #PV.tendencies[u_shift + ijk] += self.u_dt_tot[k]
                             #PV.tendencies[v_shift + ijk] += self.v_dt_tot[k]
         else:
@@ -402,10 +418,11 @@ cdef class ForcingGCMMean:
         NS.write_profile('ls_dqtdt_hadv', self.shum_dt_hadv[Gr.dims.gw:-Gr.dims.gw],Pa)
         NS.write_profile('ls_dqtdt_fluc', self.shum_dt_fluc[Gr.dims.gw:-Gr.dims.gw], Pa)
 
-
         NS.write_profile('ls_dqtdt_resid', self.shum_dt_resid[Gr.dims.gw:-Gr.dims.gw], Pa)
         NS.write_profile('ls_dtdt_resid', self.temp_dt_resid[Gr.dims.gw:-Gr.dims.gw], Pa)
 
+        NS.write_profile('dqtdt_nudge', self.qt_tend_nudge[Gr.dims.gw:-Gr.dims.gw], Pa)
+        NS.write_profile('dtdt_nudge', self.t_tend_nudge[Gr.dims.gw:-Gr.dims.gw], Pa)
 
         return
 
