@@ -61,6 +61,8 @@ def RadiationFactory(namelist, LatentHeat LH, ParallelMPI.ParallelMPI Pa):
             #return RadiationGCMGreyVarying(namelist, LH, Pa)
         elif casename == 'GCMMean':
             return RadiationGCMGreyMean(namelist, LH, Pa)
+        elif casename == 'GCMNew':
+            return RadiationNone()
         else:
             return RadiationNone()
 

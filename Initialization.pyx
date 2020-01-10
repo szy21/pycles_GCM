@@ -24,6 +24,7 @@ include 'parameters.pxi'
 import cPickle
 from scipy import interpolate
 from fms_forcing_reader import reader
+from cfsites_forcing_reader import cfreader
 
 def InitializationFactory(namelist):
 
@@ -54,6 +55,8 @@ def InitializationFactory(namelist):
             return InitGCMVarying
         elif casename == 'GCMMean':
             return InitGCMMean
+        elif casename == 'GCMNew':
+            return InitGCMNew
         else:
             pass
 
@@ -1457,7 +1460,7 @@ def InitGCMMean(namelist, Grid.Grid Gr,PrognosticVariables.PrognosticVariables P
     #fh.close()
 
 
-    rdr = reader(data_path, lat, lon)
+    rdr = cfreader(data_path, lat, lon)
 
 
 
@@ -1489,6 +1492,93 @@ def InitGCMMean(namelist, Grid.Grid Gr,PrognosticVariables.PrognosticVariables P
     cdef double [:] qt = rdr.get_interp_profile('sphum', Gr.zp_half)
     cdef double [:] u = rdr.get_interp_profile('u_geos', Gr.zp_half)
     cdef double [:] v = rdr.get_interp_profile('v_geos', Gr.zp_half)
+
+
+
+    #Generate initial perturbations (here we are generating more than we need)
+    cdef double [:] theta_pert = np.random.random_sample(Gr.dims.npg)
+    cdef int jk
+    #Now set the initial condition
+    if 's' in PV.name_index:
+        s_varshift = PV.get_varshift(Gr, 's')
+        for i in xrange(Gr.dims.nlg[0]):
+            ishift =  i * Gr.dims.nlg[1] * Gr.dims.nlg[2]
+            for j in xrange(Gr.dims.nlg[1]):
+                jshift = j * Gr.dims.nlg[2]
+                for k in xrange(Gr.dims.nlg[2]):
+                    ijk = ishift + jshift + k
+                    jk = ishift + jshift + k 
+                    PV.values[u_varshift + ijk] = u[k]
+                    PV.values[v_varshift + ijk] = v[k]
+                    PV.values[w_varshift + ijk] = 0.0
+                    PV.values[s_varshift + ijk] = Th.entropy(RS.p0_half[k],t[k],qt[k],0.0,0.0)
+                    PV.values[qt_varshift + ijk] = qt[k]
+                    if Gr.zpl_half[k] < 500.0:
+                        PV.values[s_varshift + ijk] = PV.values[s_varshift + ijk]  + (theta_pert[jk] - 0.5)*0.3
+    else:
+        thli_varshift = PV.get_varshift(Gr, 'thli')
+        for i in xrange(Gr.dims.nlg[0]):
+            ishift =  i * Gr.dims.nlg[1] * Gr.dims.nlg[2]
+            for j in xrange(Gr.dims.nlg[1]):
+                jshift = j * Gr.dims.nlg[2]
+                for k in xrange(Gr.dims.nlg[2]):
+                    ijk = ishift + jshift + k
+                    PV.values[u_varshift + ijk] = u[k]
+                    PV.values[v_varshift + ijk] = v[k]
+                    PV.values[w_varshift + ijk] = 0.0
+                    PV.values[thli_varshift + ijk] = thetali_c(RS.p0_half[k], t[k], 0.0, 0.0, 0.0, Th.get_lh(t[k]))
+                    PV.values[qt_varshift + ijk] = qt[k]
+                    if Gr.zpl_half[k] < 500.0:
+                        PV.values[thli_varshift + ijk] = PV.values[thli_varshift + ijk]  + (theta_pert[ijk] - 0.5)*0.3
+
+    return
+
+def InitGCMNew(namelist, Grid.Grid Gr,PrognosticVariables.PrognosticVariables PV,
+                       ReferenceState.ReferenceState RS, Th, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa , LatentHeat LH):
+
+
+
+
+    #Generate the reference profiles
+    data_path = namelist['gcm']['file']
+    site = namelist['gcm']['site']
+    #fh = open(data_path, 'r')
+    #input_data_tv = cPickle.load(fh)
+    #fh.close()
+
+
+    rdr = cfreader(data_path, site)
+
+
+
+    RS.Pg = rdr.get_timeseries_mean('ps')
+    RS.Tg = rdr.get_timeseries_mean('t_surf')
+    RS.qtg = rdr.get_profile_mean('sphum')[0]
+
+    RS.u0 = 0.0
+    RS.v0 = 0.0
+
+    RS.initialize(Gr, Th, NS, Pa)
+
+    np.random.seed(Pa.rank)
+
+    cdef:
+        Py_ssize_t u_varshift = PV.get_varshift(Gr,'u')
+        Py_ssize_t v_varshift = PV.get_varshift(Gr,'v')
+        Py_ssize_t w_varshift = PV.get_varshift(Gr,'w')
+        Py_ssize_t s_varshift
+        Py_ssize_t thli_varshift
+        Py_ssize_t qt_varshift = PV.get_varshift(Gr, 'qt')
+        Py_ssize_t i,j,k
+        Py_ssize_t ishift, jshift, e_varshift
+        Py_ssize_t ijk
+
+
+
+    cdef double [:] t = rdr.get_interp_profile('temp', Gr.zp_half)#interp_pchip(Gr.zp_half, z_in, np.log(t_in))
+    cdef double [:] qt = rdr.get_interp_profile('sphum', Gr.zp_half)
+    cdef double [:] u = rdr.get_interp_profile('ucomp', Gr.zp_half)
+    cdef double [:] v = rdr.get_interp_profile('vcomp', Gr.zp_half)
 
 
 
