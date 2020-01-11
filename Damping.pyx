@@ -401,21 +401,6 @@ cdef class RayleighGCMNew:
         except:
             self.damp_w = False
 
-        try:
-            self.relax_wind = namelist['damping']['Rayleigh']['relax_wind']
-        except:
-            self.relax_wind = False
-        
-        try:
-            self.z_r = namelist['damping']['Rayleigh']['z_r']
-        except:
-            self.z_r = 10000.0
-
-        try:
-            self.tau_wind = namelist['damping']['Rayleigh']['tau_wind']
-        except:
-            self.tau_wind = 86400.0
-
         self.gcm_profiles_initialized = False
         self.t_indx = 0
 
@@ -445,11 +430,6 @@ cdef class RayleighGCMNew:
                 if Gr.zpl[k] >= z_top - self.z_d:
                     self.gamma_z[
                         k] = self.gamma_r * sin((pi / 2.0) * (1.0 - (z_top - Gr.zpl[k]) / self.z_d))**2.0
-        if self.relax_wind:
-            with nogil:
-                for k in range(Gr.dims.nlg[2]):
-                    if Gr.zpl[k] >= z_top - self.z_r:
-                        self.xi_z[k] = 1.0 / self.tau_wind
         #with nogil:
         #    for k in range(Gr.dims.nlg[2]):
         #        self.gamma_zhalf[k] = self.gamma_r * (0.5 + 0.5 * tanh((Gr.zpl_half[k] - self.z_d) / self.h))
@@ -577,16 +557,6 @@ cdef class RayleighGCMNew:
         u_mean = Pa.HorizontalMean(Gr, & PV.values[u_shift])
         v_shift = PV.get_varshift(Gr, 'v')
         v_mean = Pa.HorizontalMean(Gr, & PV.values[v_shift])
-        if self.relax_wind:
-            with nogil:
-                for i in xrange(imin, imax):
-                    ishift = i * istride
-                    for j in xrange(jmin, jmax):
-                        jshift = j * jstride
-                        for k in xrange(kmin, kmax):
-                            ijk = ishift + jshift + k
-                            PV.tendencies[u_shift + ijk] -= (u_mean[k] - self.ucomp[k]) * self.xi_z[k]
-                            PV.tendencies[v_shift + ijk] -= (v_mean[k] - self.vcomp[k]) * self.xi_z[k]
 
         # if 's' in PV.name_index:
         #     s_shift = PV.get_varshift(Gr, 's')
