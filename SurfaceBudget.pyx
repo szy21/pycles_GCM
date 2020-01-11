@@ -27,6 +27,8 @@ def SurfaceBudgetFactory(namelist):
         return SurfaceBudget(namelist)
     elif namelist['meta']['casename'] == 'GCMVarying' or namelist['meta']['casename'] == 'GCMMean':
         return SurfaceBudgetVarying(namelist)
+    elif namelist['meta']['casename'] == 'GCMNew':
+        return SurfaceBudgetNew(namelist)
     else:
         return SurfaceBudgetNone()
 
@@ -207,6 +209,18 @@ cdef class SurfaceBudgetVarying:
 
         mpi.MPI_Bcast(&Sur.T_surface,count,mpi.MPI_DOUBLE,root, Pa.cart_comm_sub_z)
 
+        return
+    cpdef stats_io(self, Surface.SurfaceBase Sur, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa):
+        NS.write_ts('surface_temperature', Sur.T_surface, Pa)
+        return
+
+cdef class SurfaceBudgetNew:
+    def __init__(self, namelist):
+        return
+    cpdef initialize(self, Grid.Grid Gr,  NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa):
+        NS.add_ts('surface_temperature', Gr, Pa)
+        return
+    cpdef update(self, Grid.Grid Gr, Radiation.RadiationBase Ra, Surface.SurfaceBase Sur, TimeStepping.TimeStepping TS, ParallelMPI.ParallelMPI Pa):
         return
     cpdef stats_io(self, Surface.SurfaceBase Sur, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa):
         NS.write_ts('surface_temperature', Sur.T_surface, Pa)

@@ -208,6 +208,24 @@ cdef class SurfaceGCMMean(SurfaceBase):
                  DiagnosticVariables.DiagnosticVariables DV,   ParallelMPI.ParallelMPI Pa, TimeStepping.TimeStepping TS)
     cpdef stats_io(self, Grid.Grid Gr, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa)
 
+cdef class SurfaceGCMNew(SurfaceBase):
+
+    cdef:
+        ClausiusClapeyron CC
+        double gustiness
+        double z0
+        double ct
+        double rho0
+        int site
+        bint alt_gustiness
+        int t_indx
+        str file
+        bint gcm_profiles_initialized
+
+    cpdef initialize(self, Grid.Grid Gr, ReferenceState.ReferenceState Ref, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa)
+    cpdef update(self, Grid.Grid Gr, ReferenceState.ReferenceState Ref, PrognosticVariables.PrognosticVariables PV,
+                 DiagnosticVariables.DiagnosticVariables DV,   ParallelMPI.ParallelMPI Pa, TimeStepping.TimeStepping TS)
+    cpdef stats_io(self, Grid.Grid Gr, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa)
 
 
 cdef inline double compute_z0(double z1, double windspeed) nogil
