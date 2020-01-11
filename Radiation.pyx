@@ -31,6 +31,7 @@ import cPickle
 import cython
 
 from fms_forcing_reader import reader
+from cfsites_forcing_reader import cfreader
 
 
 def RadiationFactory(namelist, LatentHeat LH, ParallelMPI.ParallelMPI Pa):
@@ -462,7 +463,10 @@ cdef class RadiationRRTM(RadiationBase):
             self.RH_adiabat = 0.3
         elif casename == 'GCMMean':
             self.profile_name = 'gcm_mean'
-
+        elif casename == 'GCMNew':
+            self.read_file = True
+            self.file = str(namelist['gcm']['file'])
+            self.site = namelist['gcm']['site']
         else:
             Pa.root_print('RadiationRRTM: Case ' + casename + ' has no known extension profile')
             Pa.kill()
@@ -610,7 +614,11 @@ cdef class RadiationRRTM(RadiationBase):
             self.reference_profile.initialize(Pa, pressures, n_adiabat, self.Pg_adiabat, self.Tg_adiabat, self.RH_adiabat)
             temperatures =np.array( self.reference_profile.temperature)
             vapor_mixing_ratios = np.array(self.reference_profile.rv)
-
+        elif self.read_file:
+            rdr = cfreader(self.file, self.site)
+            pressures = rdr.get_profile_mean('pfull')
+            temperatures = rdr.get_profile_mean('temp')
+            vapor_mixing_ratios = rdr.get_profile_mean('sphum')
         else:
             pressures = profile_data[self.profile_name]['pressure'][:]
             temperatures = profile_data[self.profile_name]['temperature'][:]
