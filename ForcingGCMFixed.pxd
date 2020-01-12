@@ -58,3 +58,30 @@ cdef class ForcingGCMMean:
     cpdef stats_io(self, Grid.Grid Gr, ReferenceState.ReferenceState Ref,
                  PrognosticVariables.PrognosticVariables PV, DiagnosticVariables.DiagnosticVariables DV,
                    NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa)
+
+cdef class ForcingGCMNew:
+    cdef:
+        bint gcm_profiles_initialized
+        int t_indx
+        double [:] temp
+        double [:] shum
+        double [:] ucomp
+        double [:] vcomp
+
+        bint relax_scalar
+        bint relax_wind
+        double tau_scalar
+        double tau_wind
+        double [:] qt_tend_nudge
+        double [:] t_tend_nudge
+        double [:] u_tend_nudge
+        double [:] v_tend_nudge
+        str file
+        int site
+    cpdef initialize(self, Grid.Grid Gr,ReferenceState.ReferenceState Ref, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa)
+    cpdef update(self, Grid.Grid Gr, ReferenceState.ReferenceState Ref,
+                 PrognosticVariables.PrognosticVariables PV, DiagnosticVariables.DiagnosticVariables DV,  TimeStepping.TimeStepping TS,
+                 ParallelMPI.ParallelMPI Pa)
+    cpdef stats_io(self, Grid.Grid Gr, ReferenceState.ReferenceState Ref,
+                 PrognosticVariables.PrognosticVariables PV, DiagnosticVariables.DiagnosticVariables DV,
+                   NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa)

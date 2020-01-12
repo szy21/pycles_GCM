@@ -58,7 +58,7 @@ cdef class Forcing:
         elif casename == 'GCMMean':
             self.scheme = ForcingGCMFixed.ForcingGCMMean(namelist, LH, Pa)
         elif casename == 'GCMNew':
-            self.scheme = ForcingNone()
+            self.scheme = ForcingGCMFixed.ForcingGCMNew(namelist, LH, Pa)
         else:
             Pa.root_print('No focing for casename: ' +  casename)
             Pa.root_print('Killing simulation now!!!')

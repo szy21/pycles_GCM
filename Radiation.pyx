@@ -31,6 +31,7 @@ import cPickle
 import cython
 
 from fms_forcing_reader import reader
+from cfsites_forcing_reader import cfreader
 
 
 def RadiationFactory(namelist, LatentHeat LH, ParallelMPI.ParallelMPI Pa):
@@ -441,6 +442,7 @@ cdef class RadiationRRTM(RadiationBase):
 
         casename = namelist['meta']['casename']
         self.modified_adiabat = False
+        self.read_file = False
         if casename == 'SHEBA':
             self.profile_name = 'sheba'
         elif casename == 'DYCOMS_RF01':
@@ -462,7 +464,10 @@ cdef class RadiationRRTM(RadiationBase):
             self.RH_adiabat = 0.3
         elif casename == 'GCMMean':
             self.profile_name = 'gcm_mean'
-
+        elif casename == 'GCMNew':
+            self.read_file = True
+            self.file = str(namelist['gcm']['file'])
+            self.site = namelist['gcm']['site']
         else:
             Pa.root_print('RadiationRRTM: Case ' + casename + ' has no known extension profile')
             Pa.kill()
@@ -514,11 +519,14 @@ cdef class RadiationRRTM(RadiationBase):
         except:
             Pa.root_print('TOA shortwave not set so RadiationRRTM takes default value: toa_sw = 420.0 .')
             self.toa_sw = 420.0
+        if self.read_file:
+            rdr = cfreader(self.file, self.site)
+            self.toa_sw = rdr.get_timeseries_mean('swdn_toa')
 
         try:
             self.coszen = namelist['radiation']['RRTM']['coszen']
         except:
-            if (self.toa_sw > 420.0):
+            if (self.toa_sw > 0.0):
                 self.coszen = self.toa_sw / self.scon 
             else:
                 Pa.root_print('Mean Daytime cos(SZA) not set so RadiationRRTM takes default value: coszen = 2.0/pi .')
@@ -610,7 +618,11 @@ cdef class RadiationRRTM(RadiationBase):
             self.reference_profile.initialize(Pa, pressures, n_adiabat, self.Pg_adiabat, self.Tg_adiabat, self.RH_adiabat)
             temperatures =np.array( self.reference_profile.temperature)
             vapor_mixing_ratios = np.array(self.reference_profile.rv)
-
+        elif self.read_file:
+            rdr = cfreader(self.file, self.site)
+            pressures = rdr.get_profile_mean('pfull')
+            temperatures = rdr.get_profile_mean('temp')
+            vapor_mixing_ratios = rdr.get_profile_mean('sphum')
         else:
             pressures = profile_data[self.profile_name]['pressure'][:]
             temperatures = profile_data[self.profile_name]['temperature'][:]

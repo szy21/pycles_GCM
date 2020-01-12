@@ -55,8 +55,6 @@ cdef class RayleighGCMNew:
         double z_d  # Depth of damping layer
         double gamma_r  # Inverse damping timescale
         double tau_max  # Maximum damping timescale
-        double z_r  # Depth of relaxation layer
-        double tau_wind  # Wind relaxation timescale
         double[:] gamma_zhalf
         double[:] gamma_z
         double[:] xi_z
@@ -68,7 +66,6 @@ cdef class RayleighGCMNew:
         bint truncate
         bint damp_w
         bint damp_scalar
-        bint relax_wind
         int t_indx
         str file
         int site
