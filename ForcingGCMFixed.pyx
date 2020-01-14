@@ -59,12 +59,12 @@ cdef class ForcingGCMMean:
         NS.add_profile('ls_dtdt_fino', Gr, Pa)
         NS.add_profile('ls_dtdt_resid', Gr, Pa)
         NS.add_profile('ls_dtdt_fluc', Gr, Pa)
-        NS.add_profile('dtdt_nudge', Gr, Pa)
+        #NS.add_profile('dtdt_nudge', Gr, Pa)
         NS.add_profile('ls_dsdt_hadv', Gr, Pa)
         NS.add_profile('ls_dqtdt_hadv', Gr, Pa)
         NS.add_profile('ls_dqtdt_resid', Gr, Pa)
         NS.add_profile('ls_dqtdt_fluc', Gr, Pa)
-        NS.add_profile('dqtdt_nudge', Gr, Pa)
+        #NS.add_profile('dqtdt_nudge', Gr, Pa)
         NS.add_profile('ls_subs_dtdt', Gr, Pa)
         NS.add_profile('ls_subs_dsdt', Gr, Pa)
         NS.add_profile('ls_fino_dsdt', Gr, Pa)
@@ -421,8 +421,8 @@ cdef class ForcingGCMMean:
         NS.write_profile('ls_dqtdt_resid', self.shum_dt_resid[Gr.dims.gw:-Gr.dims.gw], Pa)
         NS.write_profile('ls_dtdt_resid', self.temp_dt_resid[Gr.dims.gw:-Gr.dims.gw], Pa)
 
-        NS.write_profile('dqtdt_nudge', self.qt_tend_nudge[Gr.dims.gw:-Gr.dims.gw], Pa)
-        NS.write_profile('dtdt_nudge', self.t_tend_nudge[Gr.dims.gw:-Gr.dims.gw], Pa)
+        #NS.write_profile('dqtdt_nudge', self.qt_tend_nudge[Gr.dims.gw:-Gr.dims.gw], Pa)
+        #NS.write_profile('dtdt_nudge', self.t_tend_nudge[Gr.dims.gw:-Gr.dims.gw], Pa)
 
         return
 
