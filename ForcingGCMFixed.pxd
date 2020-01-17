@@ -79,6 +79,7 @@ cdef class ForcingGCMNew:
         double [:] v_tend_nudge
         double [:] qt_tend_adv
         double [:] t_tend_adv
+        double [:] s_tend_adv
         str file
         int site
     cpdef initialize(self, Grid.Grid Gr,ReferenceState.ReferenceState Ref, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa)

@@ -464,6 +464,7 @@ cdef class ForcingGCMNew:
         self.v_tend_nudge = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
         self.qt_tend_adv = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
         self.t_tend_adv = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
+        self.s_tend_adv = np.zeros(Gr.dims.npg,dtype=np.double,order='c')
 
         NS.add_profile('dqtdt_nudge', Gr, Pa)
         NS.add_profile('dtdt_nudge', Gr, Pa)
@@ -471,6 +472,7 @@ cdef class ForcingGCMNew:
         NS.add_profile('dvdt_nudge', Gr, Pa)
         NS.add_profile('dqtdt_adv', Gr, Pa)
         NS.add_profile('dtdt_adv', Gr, Pa)
+        NS.add_profile('dsdt_adv', Gr, Pa)
 
 
         return
@@ -563,6 +565,7 @@ cdef class ForcingGCMNew:
                         #PV.tendencies[qt_shift + ijk] += (self.qt_tend_adv[k]+self.qt_tend_nudge[k])
                         PV.tendencies[u_shift + ijk] += self.u_tend_nudge[k]
                         PV.tendencies[v_shift + ijk] += self.v_tend_nudge[k]
+                        self.s_tend_adv[ijk]= s_tendency_c(p0,qt, qv, t, self.t_tend_adv[k], self.qt_tend_adv[k])
 
         return
 
@@ -579,11 +582,8 @@ cdef class ForcingGCMNew:
             Py_ssize_t istride = Gr.dims.nlg[1] * Gr.dims.nlg[2]
             Py_ssize_t jstride = Gr.dims.nlg[2]
             Py_ssize_t i,j,k,ishift,jshift,ijk
-
             #Py_ssize_t s_shift = PV.get_varshift(Gr, 's')
-            Py_ssize_t qt_shift = PV.get_varshift(Gr, 'qt')
-            Py_ssize_t t_shift = DV.get_varshift(Gr, 'temperature')
-            Py_ssize_t ql_shift = DV.get_varshift(Gr,'ql')
+            double [:] mean_tendency = np.empty((Gr.dims.nlg[2],),dtype=np.double,order='c')
 
         NS.write_profile('dqtdt_nudge', self.qt_tend_nudge[Gr.dims.gw:-Gr.dims.gw], Pa)
         NS.write_profile('dtdt_nudge', self.t_tend_nudge[Gr.dims.gw:-Gr.dims.gw], Pa)
@@ -591,6 +591,8 @@ cdef class ForcingGCMNew:
         NS.write_profile('dvdt_nudge', self.v_tend_nudge[Gr.dims.gw:-Gr.dims.gw], Pa)
         NS.write_profile('dqtdt_adv', self.qt_tend_adv[Gr.dims.gw:-Gr.dims.gw], Pa)
         NS.write_profile('dtdt_adv', self.t_tend_adv[Gr.dims.gw:-Gr.dims.gw], Pa)
+        mean_tendency = Pa.HorizontalMean(Gr,&self.s_tend_adv[0])
+        NS.write_profile('dsdt_adv',mean_tendency[Gr.dims.gw:-Gr.dims.gw],Pa)
 
         return
 
