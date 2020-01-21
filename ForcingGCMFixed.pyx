@@ -448,9 +448,16 @@ cdef class ForcingGCMNew:
         except:
             self.tau_wind = 21600.0
         try:
-            self.advection = namelist['forcing']['advection']
+            self.add_advection = namelist['forcing']['add_advection']
         except:
-            self.advection = False
+            self.add_advection = False
+        try:
+            self.add_subsidence = namelist['forcing']['add_subsidence']
+        except:
+            self.add_subsidence = False
+        if self.add_advection and self.add_subsidence:
+            Pa.root_print('ForcingGCMNew: Cannot specify both total advective tendency and subsidence')
+            Pa.kill()
         self.gcm_profiles_initialized = False
         self.t_indx = 0
         return
@@ -465,7 +472,9 @@ cdef class ForcingGCMNew:
         self.qt_tend_adv = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
         self.t_tend_adv = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
         self.s_tend_adv = np.zeros(Gr.dims.npg,dtype=np.double,order='c')
+        self.subsidence = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
 
+        NS.add_profile('ls_subsidence', Gr, Pa)
         NS.add_profile('dqtdt_nudge', Gr, Pa)
         NS.add_profile('dtdt_nudge', Gr, Pa)
         NS.add_profile('dudt_nudge', Gr, Pa)
@@ -473,6 +482,8 @@ cdef class ForcingGCMNew:
         NS.add_profile('dqtdt_adv', Gr, Pa)
         NS.add_profile('dtdt_adv', Gr, Pa)
         NS.add_profile('dsdt_adv', Gr, Pa)
+        NS.add_profile('dqtdt_sub', Gr, Pa)
+        NS.add_profile('dtdt_sub', Gr, Pa)
 
 
         return
@@ -515,11 +526,19 @@ cdef class ForcingGCMNew:
             self.shum = rdr.get_interp_profile_old('sphum', Gr.zp_half)
             self.ucomp = rdr.get_interp_profile_old('ucomp', Gr.zp_half)
             self.vcomp = rdr.get_interp_profile_old('vcomp', Gr.zp_half)
-            if self.advection:
+            if self.add_advection:
                 self.t_tend_adv = rdr.get_interp_profile_old('tnta', Gr.zp_half)
                 self.qt_tend_adv = rdr.get_interp_profile_old('tnhusa',Gr.zp_half)
+            if self.add_subsidence:
+                self.omega_vv = rdr.get_interp_profile_old('omega', Gr.zp_half)
+                alpha = rdr.get_interp_profile_old('alpha', Gr.zp_half)
+                self.subsidence = -np.array(self.omega_vv) * alpha / g
             Pa.root_print('Finished updating forcing')
 
+        # Apply subsidence
+        if self.add_subsidence:
+            apply_subsidence(&Gr.dims, &Ref.rho0[0], &Ref.rho0_half[0], &self.subsidence[0], &PV.values[s_shift], &PV.tendencies[s_shift])
+            apply_subsidence(&Gr.dims, &Ref.rho0[0], &Ref.rho0_half[0], &self.subsidence[0], &PV.values[qt_shift], &PV.tendencies[qt_shift])
         # Relaxation
         cdef double [:] xi_relax_scalar = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
         cdef double [:] xi_relax_wind = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
@@ -582,9 +601,26 @@ cdef class ForcingGCMNew:
             Py_ssize_t istride = Gr.dims.nlg[1] * Gr.dims.nlg[2]
             Py_ssize_t jstride = Gr.dims.nlg[2]
             Py_ssize_t i,j,k,ishift,jshift,ijk
-            #Py_ssize_t s_shift = PV.get_varshift(Gr, 's')
+            Py_ssize_t s_shift = PV.get_varshift(Gr, 's')
+            Py_ssize_t qt_shift = PV.get_varshift(Gr, 'qt')
+            Py_ssize_t t_shift = DV.get_varshift(Gr, 'temperature')
+            double [:] tmp_tendency  = np.zeros((Gr.dims.npg),dtype=np.double,order='c')
             double [:] mean_tendency = np.empty((Gr.dims.nlg[2],),dtype=np.double,order='c')
 
+        #Output subsidence tendencies
+        tmp_tendency[:] = 0.0
+        apply_subsidence(&Gr.dims,&Ref.rho0[0],&Ref.rho0_half[0],&self.subsidence[0], &PV.values[qt_shift],
+                         &tmp_tendency[0])
+        mean_tendency = Pa.HorizontalMean(Gr,&tmp_tendency[0])
+        NS.write_profile('dqtdt_sub', mean_tendency[Gr.dims.gw:-Gr.dims.gw], Pa)
+
+        tmp_tendency[:] = 0.0
+        apply_subsidence(&Gr.dims,&Ref.rho0[0],&Ref.rho0_half[0],&self.subsidence[0], &DV.values[t_shift],
+                         &tmp_tendency[0])
+        mean_tendency = Pa.HorizontalMean(Gr,&tmp_tendency[0])
+        NS.write_profile('dtdt_sub', mean_tendency[Gr.dims.gw:-Gr.dims.gw], Pa)
+
+        NS.write_profile('ls_subsidence', self.subsidence[Gr.dims.gw:-Gr.dims.gw],Pa)
         NS.write_profile('dqtdt_nudge', self.qt_tend_nudge[Gr.dims.gw:-Gr.dims.gw], Pa)
         NS.write_profile('dtdt_nudge', self.t_tend_nudge[Gr.dims.gw:-Gr.dims.gw], Pa)
         NS.write_profile('dudt_nudge', self.u_tend_nudge[Gr.dims.gw:-Gr.dims.gw], Pa)

@@ -72,7 +72,8 @@ cdef class ForcingGCMNew:
         bint relax_wind
         double tau_scalar
         double tau_wind
-        bint advection
+        bint add_advection
+        bint add_subsidence
         double [:] qt_tend_nudge
         double [:] t_tend_nudge
         double [:] u_tend_nudge
@@ -80,6 +81,8 @@ cdef class ForcingGCMNew:
         double [:] qt_tend_adv
         double [:] t_tend_adv
         double [:] s_tend_adv
+        double [:] omega_vv
+        double [:] subsidence
         str file
         int site
     cpdef initialize(self, Grid.Grid Gr,ReferenceState.ReferenceState Ref, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa)
