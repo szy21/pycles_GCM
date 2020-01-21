@@ -447,6 +447,10 @@ cdef class ForcingGCMNew:
             self.tau_wind = namelist['forcing']['tau_wind']
         except:
             self.tau_wind = 21600.0
+        try:
+            self.advection = namelist['forcing']['advection']
+        except:
+            self.advection = False
         self.gcm_profiles_initialized = False
         self.t_indx = 0
         return
@@ -458,11 +462,17 @@ cdef class ForcingGCMNew:
         self.t_tend_nudge = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
         self.u_tend_nudge = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
         self.v_tend_nudge = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
+        self.qt_tend_adv = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
+        self.t_tend_adv = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
+        self.s_tend_adv = np.zeros(Gr.dims.npg,dtype=np.double,order='c')
 
         NS.add_profile('dqtdt_nudge', Gr, Pa)
         NS.add_profile('dtdt_nudge', Gr, Pa)
         NS.add_profile('dudt_nudge', Gr, Pa)
         NS.add_profile('dvdt_nudge', Gr, Pa)
+        NS.add_profile('dqtdt_adv', Gr, Pa)
+        NS.add_profile('dtdt_adv', Gr, Pa)
+        NS.add_profile('dsdt_adv', Gr, Pa)
 
 
         return
@@ -482,8 +492,7 @@ cdef class ForcingGCMNew:
             Py_ssize_t i,j,k,ishift,jshift,ijk
             Py_ssize_t u_shift = PV.get_varshift(Gr, 'u')
             Py_ssize_t v_shift = PV.get_varshift(Gr, 'v')
-            Py_ssize_t s_shift
-            Py_ssize_t thli_shift
+            Py_ssize_t s_shift = PV.get_varshift(Gr, 's')
             Py_ssize_t qt_shift = PV.get_varshift(Gr, 'qt')
             Py_ssize_t t_shift = DV.get_varshift(Gr, 'temperature')
             Py_ssize_t ql_shift = DV.get_varshift(Gr,'ql')
@@ -506,7 +515,9 @@ cdef class ForcingGCMNew:
             self.shum = rdr.get_interp_profile_old('sphum', Gr.zp_half)
             self.ucomp = rdr.get_interp_profile_old('ucomp', Gr.zp_half)
             self.vcomp = rdr.get_interp_profile_old('vcomp', Gr.zp_half)
-
+            if self.advection:
+                self.t_tend_adv = rdr.get_interp_profile_old('tnta', Gr.zp_half)
+                self.qt_tend_adv = rdr.get_interp_profile_old('tnhusa',Gr.zp_half)
             Pa.root_print('Finished updating forcing')
 
         # Relaxation
@@ -528,49 +539,33 @@ cdef class ForcingGCMNew:
                     self.u_tend_nudge[k] = -xi_relax_wind[k] * (u_mean[k] - self.ucomp[k])
                     self.v_tend_nudge[k]  = -xi_relax_wind[k] * (v_mean[k] - self.vcomp[k])
 
-        if 's' in PV.name_index:
-            s_shift = PV.get_varshift(Gr, 's')
-            with nogil:
-                for i in xrange(gw,imax):
-                    ishift = i * istride
-                    for j in xrange(gw,jmax):
-                        jshift = j * jstride
-                        for k in xrange(gw,kmax):
-                            ijk = ishift + jshift + k
-                            p0 = Ref.p0_half[k]
-                            rho0 = Ref.rho0_half[k]
-                            qt = PV.values[qt_shift + ijk]
-                            qv = qt - DV.values[ql_shift + ijk] - DV.values[qi_shift + ijk] 
-                            pd = pd_c(p0,qt,qv)
-                            pv = pv_c(p0,qt,qv)
-                            t  = DV.values[t_shift + ijk]
+        cdef double total_t_source, total_qt_source
 
-                            PV.tendencies[s_shift + ijk] += (cpm_c(qt) * (self.t_tend_nudge[k]))/t
-                            PV.tendencies[s_shift + ijk] += (sv_c(pv,t) - sd_c(pd,t)) * (self.qt_tend_nudge[k])
-                            PV.tendencies[qt_shift + ijk] += (self.qt_tend_nudge[k])
-                            PV.tendencies[u_shift + ijk] += self.u_tend_nudge[k]
-                            PV.tendencies[v_shift + ijk] += self.v_tend_nudge[k]
-        else:
-            thli_shift = PV.get_varshift(Gr, 'thli')
-            with nogil:
-                for i in xrange(gw,imax):
-                    ishift = i * istride
-                    for j in xrange(gw,jmax):
-                        jshift = j * jstride
-                        for k in xrange(gw,kmax):
-                            ijk = ishift + jshift + k
-                            p0 = Ref.p0_half[k]
-                            rho0 = Ref.rho0_half[k]
-                            qt = PV.values[qt_shift + ijk]
-                            qv = qt - DV.values[ql_shift + ijk]
-                            pd = pd_c(p0,qt,qv)
-                            pv = pv_c(p0,qt,qv)
-                            t  = DV.values[t_shift + ijk]
-
-                            PV.tendencies[thli_shift + ijk] += (self.t_tend_nudge[k])/exner_c(Ref.p0_half[k])
-                            PV.tendencies[qt_shift + ijk] += (self.qt_tend_nudge[k])
-                            PV.tendencies[u_shift + ijk] += self.u_tend_nudge[k]
-                            PV.tendencies[v_shift + ijk] += self.v_tend_nudge[k]
+        with nogil:
+            for i in xrange(gw,imax):
+                ishift = i * istride
+                for j in xrange(gw,jmax):
+                    jshift = j * jstride
+                    for k in xrange(gw,kmax):
+                        ijk = ishift + jshift + k
+                        p0 = Ref.p0_half[k]
+                        rho0 = Ref.rho0_half[k]
+                        qt = PV.values[qt_shift + ijk]
+                        qv = qt - DV.values[ql_shift + ijk] - DV.values[qi_shift + ijk] 
+                        pd = pd_c(p0,qt,qv)
+                        pv = pv_c(p0,qt,qv)
+                        t  = DV.values[t_shift + ijk]
+                        
+                        total_t_source = self.t_tend_adv[k] + self.t_tend_nudge[k]
+                        total_qt_source = self.qt_tend_adv[k] + self.qt_tend_nudge[k] 
+                        PV.tendencies[s_shift + ijk] += s_tendency_c(p0, qt, qv, t, total_qt_source, total_t_source)
+                        PV.tendencies[qt_shift + ijk] += total_qt_source
+                        #PV.tendencies[s_shift + ijk] += (cpm_c(qt) * (self.t_tend_adv[k]+self.t_tend_nudge[k]))/t
+                        #PV.tendencies[s_shift + ijk] += (sv_c(pv,t) - sd_c(pd,t)) * (self.qt_tend_adv[k]+self.qt_tend_nudge[k])
+                        #PV.tendencies[qt_shift + ijk] += (self.qt_tend_adv[k]+self.qt_tend_nudge[k])
+                        PV.tendencies[u_shift + ijk] += self.u_tend_nudge[k]
+                        PV.tendencies[v_shift + ijk] += self.v_tend_nudge[k]
+                        self.s_tend_adv[ijk]= s_tendency_c(p0,qt, qv, t, self.t_tend_adv[k], self.qt_tend_adv[k])
 
         return
 
@@ -587,16 +582,17 @@ cdef class ForcingGCMNew:
             Py_ssize_t istride = Gr.dims.nlg[1] * Gr.dims.nlg[2]
             Py_ssize_t jstride = Gr.dims.nlg[2]
             Py_ssize_t i,j,k,ishift,jshift,ijk
-
             #Py_ssize_t s_shift = PV.get_varshift(Gr, 's')
-            Py_ssize_t qt_shift = PV.get_varshift(Gr, 'qt')
-            Py_ssize_t t_shift = DV.get_varshift(Gr, 'temperature')
-            Py_ssize_t ql_shift = DV.get_varshift(Gr,'ql')
+            double [:] mean_tendency = np.empty((Gr.dims.nlg[2],),dtype=np.double,order='c')
 
         NS.write_profile('dqtdt_nudge', self.qt_tend_nudge[Gr.dims.gw:-Gr.dims.gw], Pa)
         NS.write_profile('dtdt_nudge', self.t_tend_nudge[Gr.dims.gw:-Gr.dims.gw], Pa)
         NS.write_profile('dudt_nudge', self.u_tend_nudge[Gr.dims.gw:-Gr.dims.gw], Pa)
         NS.write_profile('dvdt_nudge', self.v_tend_nudge[Gr.dims.gw:-Gr.dims.gw], Pa)
+        NS.write_profile('dqtdt_adv', self.qt_tend_adv[Gr.dims.gw:-Gr.dims.gw], Pa)
+        NS.write_profile('dtdt_adv', self.t_tend_adv[Gr.dims.gw:-Gr.dims.gw], Pa)
+        mean_tendency = Pa.HorizontalMean(Gr,&self.s_tend_adv[0])
+        NS.write_profile('dsdt_adv',mean_tendency[Gr.dims.gw:-Gr.dims.gw],Pa)
 
         return
 
