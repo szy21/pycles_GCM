@@ -584,7 +584,7 @@ cdef class ForcingGCMNew:
                         #PV.tendencies[qt_shift + ijk] += (self.qt_tend_adv[k]+self.qt_tend_nudge[k])
                         PV.tendencies[u_shift + ijk] += self.u_tend_nudge[k]
                         PV.tendencies[v_shift + ijk] += self.v_tend_nudge[k]
-                        self.s_tend_adv[ijk]= s_tendency_c(p0,qt, qv, t, self.t_tend_adv[k], self.qt_tend_adv[k])
+                        self.s_tend_adv[ijk]= s_tendency_c(p0,qt, qv, t, self.qt_tend_adv[k], self.t_tend_adv[k])
 
         return
 
