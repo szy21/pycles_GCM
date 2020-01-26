@@ -452,9 +452,16 @@ cdef class ForcingGCMNew:
         except:
             self.add_advection = False
         try:
+            self.add_horiz_advection = namelist['forcing']['add_horiz_advection']
+        except:
+            self.add_horiz_advection = False
+        try:
             self.add_subsidence = namelist['forcing']['add_subsidence']
         except:
             self.add_subsidence = False
+        if self.add_advection and self.add_horiz_advection:
+            Pa.root_print('ForcingGCMNew: Cannot specify both total advective tendency and horizontal advective tendency')
+            Pa.kill()
         if self.add_advection and self.add_subsidence:
             Pa.root_print('ForcingGCMNew: Cannot specify both total advective tendency and subsidence')
             Pa.kill()
@@ -472,6 +479,9 @@ cdef class ForcingGCMNew:
         self.qt_tend_adv = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
         self.t_tend_adv = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
         self.s_tend_adv = np.zeros(Gr.dims.npg,dtype=np.double,order='c')
+        self.qt_tend_hadv = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
+        self.t_tend_hadv = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
+        self.s_tend_hadv = np.zeros(Gr.dims.npg,dtype=np.double,order='c')
         self.subsidence = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
 
         NS.add_profile('ls_subsidence', Gr, Pa)
@@ -482,6 +492,9 @@ cdef class ForcingGCMNew:
         NS.add_profile('dqtdt_adv', Gr, Pa)
         NS.add_profile('dtdt_adv', Gr, Pa)
         NS.add_profile('dsdt_adv', Gr, Pa)
+        NS.add_profile('dqtdt_hadv', Gr, Pa)
+        NS.add_profile('dtdt_hadv', Gr, Pa)
+        NS.add_profile('dsdt_hadv', Gr, Pa)
         NS.add_profile('dqtdt_sub', Gr, Pa)
         NS.add_profile('dtdt_sub', Gr, Pa)
 
@@ -523,12 +536,28 @@ cdef class ForcingGCMNew:
 
             rdr = cfreader(self.file, self.site)
             self.temp = rdr.get_interp_profile_old('temp', Gr.zp_half)
-            self.shum = rdr.get_interp_profile_old('sphum', Gr.zp_half)
+            self.sphum = rdr.get_interp_profile_old('sphum', Gr.zp_half)
             self.ucomp = rdr.get_interp_profile_old('ucomp', Gr.zp_half)
             self.vcomp = rdr.get_interp_profile_old('vcomp', Gr.zp_half)
+            temp_at_zp = rdr.get_interp_profile('temp', Gr.zp)
+            sphum_at_zp = rdr.get_interp_profile('sphum', Gr.zp)
             if self.add_advection:
                 self.t_tend_adv = rdr.get_interp_profile_old('tnta', Gr.zp_half)
                 self.qt_tend_adv = rdr.get_interp_profile_old('tnhusa',Gr.zp_half)
+            if self.add_horiz_advection:
+                tnta = rdr.get_interp_profile_old('tnta', Gr.zp_half)
+                tnhusa = rdr.get_interp_profile_old('tnhusa',Gr.zp_half)
+                tntwork =  rdr.get_interp_profile_old('tntwork', Gr.zp_half)
+                omega_vv = rdr.get_interp_profile_old('omega', Gr.zp_half)
+                alpha = rdr.get_interp_profile_old('alpha', Gr.zp_half)
+                subsidence = -np.array(omega_vv) * alpha / g
+                temp_hadv_fluc = np.zeros(np.shape(tnta))
+                sphum_hadv_fluc = np.zeros(np.shape(tnta))
+                for k in xrange(temp_at_zp.shape[0]-1):
+                    temp_hadv_fluc[k] = tnta[k] - tntwork[k] + ((temp_at_zp[k+1]-temp_at_zp[k]) * Gr.dims.dxi[2] * Gr.dims.imetl_half[k]) * subsidence[k]
+                    sphum_hadv_fluc[k] = tnhusa[k] + ((sphum_at_zp[k+1]-sphum_at_zp[k]) * Gr.dims.dxi[2] * Gr.dims.imetl_half[k]) * subsidence[k]
+                self.t_tend_hadv = temp_hadv_fluc #hadv includes vertical fluctuation
+                self.qt_tend_hadv = sphum_hadv_fluc
             if self.add_subsidence:
                 self.omega_vv = rdr.get_interp_profile_old('omega', Gr.zp_half)
                 alpha = rdr.get_interp_profile_old('alpha', Gr.zp_half)
@@ -547,7 +576,7 @@ cdef class ForcingGCMNew:
                 for k in xrange(Gr.dims.nlg[2]):
                     xi_relax_scalar[k] = 1.0 / self.tau_scalar
                     # Nudging rates
-                    self.qt_tend_nudge[k] = -xi_relax_scalar[k] * (qt_mean[k] - self.shum[k])
+                    self.qt_tend_nudge[k] = -xi_relax_scalar[k] * (qt_mean[k] - self.sphum[k])
                     self.t_tend_nudge[k]  = -xi_relax_scalar[k] * (t_mean[k] - self.temp[k])
         
         if self.relax_wind:
