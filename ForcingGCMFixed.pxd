@@ -64,7 +64,7 @@ cdef class ForcingGCMNew:
         bint gcm_profiles_initialized
         int t_indx
         double [:] temp
-        double [:] shum
+        double [:] sphum
         double [:] ucomp
         double [:] vcomp
 
@@ -73,6 +73,7 @@ cdef class ForcingGCMNew:
         double tau_scalar
         double tau_wind
         bint add_advection
+        bint add_horiz_advection
         bint add_subsidence
         double [:] qt_tend_nudge
         double [:] t_tend_nudge
@@ -81,6 +82,9 @@ cdef class ForcingGCMNew:
         double [:] qt_tend_adv
         double [:] t_tend_adv
         double [:] s_tend_adv
+        double [:] qt_tend_hadv
+        double [:] t_tend_hadv
+        double [:] s_tend_hadv
         double [:] omega_vv
         double [:] subsidence
         str file
