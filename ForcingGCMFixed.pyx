@@ -604,8 +604,8 @@ cdef class ForcingGCMNew:
                         pv = pv_c(p0,qt,qv)
                         t  = DV.values[t_shift + ijk]
                         
-                        total_t_source = self.t_tend_adv[k] + self.t_tend_nudge[k]
-                        total_qt_source = self.qt_tend_adv[k] + self.qt_tend_nudge[k] 
+                        total_t_source = self.t_tend_hadv[k] + self.t_tend_adv[k] + self.t_tend_nudge[k]
+                        total_qt_source = self.qt_tend_hadv[k] + self.qt_tend_adv[k] + self.qt_tend_nudge[k] 
                         PV.tendencies[s_shift + ijk] += s_tendency_c(p0, qt, qv, t, total_qt_source, total_t_source)
                         PV.tendencies[qt_shift + ijk] += total_qt_source
                         #PV.tendencies[s_shift + ijk] += (cpm_c(qt) * (self.t_tend_adv[k]+self.t_tend_nudge[k]))/t
@@ -614,6 +614,7 @@ cdef class ForcingGCMNew:
                         PV.tendencies[u_shift + ijk] += self.u_tend_nudge[k]
                         PV.tendencies[v_shift + ijk] += self.v_tend_nudge[k]
                         self.s_tend_adv[ijk]= s_tendency_c(p0,qt, qv, t, self.qt_tend_adv[k], self.t_tend_adv[k])
+                        self.s_tend_hadv[ijk]= s_tendency_c(p0,qt, qv, t, self.qt_tend_hadv[k], self.t_tend_hadv[k])
 
         return
 
@@ -658,6 +659,10 @@ cdef class ForcingGCMNew:
         NS.write_profile('dtdt_adv', self.t_tend_adv[Gr.dims.gw:-Gr.dims.gw], Pa)
         mean_tendency = Pa.HorizontalMean(Gr,&self.s_tend_adv[0])
         NS.write_profile('dsdt_adv',mean_tendency[Gr.dims.gw:-Gr.dims.gw],Pa)
+        NS.write_profile('dqtdt_hadv', self.qt_tend_hadv[Gr.dims.gw:-Gr.dims.gw], Pa)
+        NS.write_profile('dtdt_hadv', self.t_tend_hadv[Gr.dims.gw:-Gr.dims.gw], Pa)
+        mean_tendency = Pa.HorizontalMean(Gr,&self.s_tend_hadv[0])
+        NS.write_profile('dsdt_hadv',mean_tendency[Gr.dims.gw:-Gr.dims.gw],Pa)
 
         return
 

@@ -73,6 +73,7 @@ cdef class ForcingGCMNew:
         double tau_scalar
         double tau_wind
         bint add_advection
+        bint add_horiz_advection
         bint add_subsidence
         double [:] qt_tend_nudge
         double [:] t_tend_nudge
