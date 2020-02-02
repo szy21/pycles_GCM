@@ -63,10 +63,14 @@ cdef class ForcingGCMNew:
     cdef:
         bint gcm_profiles_initialized
         int t_indx
+        double lat
+        double coriolis_param
         double [:] temp
         double [:] sphum
         double [:] ucomp
         double [:] vcomp
+        double [:] ug
+        double [:] vg
 
         bint relax_scalar
         bint relax_wind
@@ -75,6 +79,8 @@ cdef class ForcingGCMNew:
         bint add_advection
         bint add_horiz_advection
         bint add_subsidence
+        bint add_coriolis
+        bint add_ls_pgradient
         double [:] qt_tend_nudge
         double [:] t_tend_nudge
         double [:] u_tend_nudge
