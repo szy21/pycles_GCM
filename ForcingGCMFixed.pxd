@@ -79,6 +79,7 @@ cdef class ForcingGCMNew:
         bint add_advection
         bint add_horiz_advection
         bint add_subsidence
+        bint add_subsidence_wind
         bint add_coriolis
         bint add_ls_pgradient
         double [:] qt_tend_nudge
