@@ -511,6 +511,8 @@ cdef class ForcingGCMNew:
         NS.add_profile('dsdt_hadv', Gr, Pa)
         NS.add_profile('dqtdt_sub', Gr, Pa)
         NS.add_profile('dtdt_sub', Gr, Pa)
+        NS.add_profile('dudt_sub', Gr, Pa)
+        NS.add_profile('dvdt_sub', Gr, Pa)
         NS.add_profile('dudt_cor', Gr, Pa)
         NS.add_profile('dvdt_cor', Gr, Pa)
 
@@ -681,17 +683,30 @@ cdef class ForcingGCMNew:
 
         #Output subsidence tendencies
         tmp_tendency[:] = 0.0
-        apply_subsidence(&Gr.dims,&Ref.rho0[0],&Ref.rho0_half[0],&self.subsidence[0], &PV.values[qt_shift],
-                         &tmp_tendency[0])
+        if self.add_subsidence:
+            apply_subsidence(&Gr.dims,&Ref.rho0[0],&Ref.rho0_half[0],&self.subsidence[0], &PV.values[qt_shift],
+                             &tmp_tendency[0])
         mean_tendency = Pa.HorizontalMean(Gr,&tmp_tendency[0])
         NS.write_profile('dqtdt_sub', mean_tendency[Gr.dims.gw:-Gr.dims.gw], Pa)
-
         tmp_tendency[:] = 0.0
-        apply_subsidence(&Gr.dims,&Ref.rho0[0],&Ref.rho0_half[0],&self.subsidence[0], &DV.values[t_shift],
-                         &tmp_tendency[0])
+        if self.add_subsidence:
+            apply_subsidence(&Gr.dims,&Ref.rho0[0],&Ref.rho0_half[0],&self.subsidence[0], &DV.values[t_shift],
+                             &tmp_tendency[0])
         mean_tendency = Pa.HorizontalMean(Gr,&tmp_tendency[0])
         NS.write_profile('dtdt_sub', mean_tendency[Gr.dims.gw:-Gr.dims.gw], Pa)
-
+        tmp_tendency[:] = 0.0
+        if self.add_subsidence_wind:
+            apply_subsidence(&Gr.dims,&Ref.rho0[0],&Ref.rho0_half[0],&self.subsidence[0], &PV.values[u_shift],
+                             &tmp_tendency[0])
+        mean_tendency = Pa.HorizontalMean(Gr,&tmp_tendency[0])
+        NS.write_profile('dudt_sub', mean_tendency[Gr.dims.gw:-Gr.dims.gw], Pa)
+        tmp_tendency[:] = 0.0
+        if self.add_subsidence_wind:
+            apply_subsidence(&Gr.dims,&Ref.rho0[0],&Ref.rho0_half[0],&self.subsidence[0], &PV.values[v_shift],
+                             &tmp_tendency[0])
+        mean_tendency = Pa.HorizontalMean(Gr,&tmp_tendency[0])
+        NS.write_profile('dvdt_sub', mean_tendency[Gr.dims.gw:-Gr.dims.gw], Pa)
+        
         NS.write_profile('ls_subsidence', self.subsidence[Gr.dims.gw:-Gr.dims.gw],Pa)
         NS.write_profile('dqtdt_nudge', self.qt_tend_nudge[Gr.dims.gw:-Gr.dims.gw], Pa)
         NS.write_profile('dtdt_nudge', self.t_tend_nudge[Gr.dims.gw:-Gr.dims.gw], Pa)
