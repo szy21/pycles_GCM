@@ -135,7 +135,7 @@ class cfreader:
         rt_grp = nc.Dataset(self.file, 'r')
         op_grp = rt_grp[self.op_grp]
         var_handle =  op_grp.variables[var]
-        assert(('pt',) == var_handle.dimensions)
+        assert(() == var_handle.dimensions)
 
         return var_handle[0]
 

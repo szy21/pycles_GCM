@@ -465,6 +465,14 @@ cdef class ForcingGCMNew:
         if self.add_advection and self.add_subsidence:
             Pa.root_print('ForcingGCMNew: Cannot specify both total advective tendency and subsidence')
             Pa.kill()
+        try:
+            self.add_coriolis = namelist['forcing']['add_coriolis']
+        except:
+            self.add_coriolis = False
+        try:
+            self.add_ls_pgradient = namelist['forcing']['add_ls_pgradient']
+        except:
+            self.add_ls_pgradient = False
         self.gcm_profiles_initialized = False
         self.t_indx = 0
         return
@@ -483,6 +491,8 @@ cdef class ForcingGCMNew:
         self.t_tend_hadv = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
         self.s_tend_hadv = np.zeros(Gr.dims.npg,dtype=np.double,order='c')
         self.subsidence = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
+        self.ug = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
+        self.vg = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
 
         NS.add_profile('ls_subsidence', Gr, Pa)
         NS.add_profile('dqtdt_nudge', Gr, Pa)
@@ -497,6 +507,8 @@ cdef class ForcingGCMNew:
         NS.add_profile('dsdt_hadv', Gr, Pa)
         NS.add_profile('dqtdt_sub', Gr, Pa)
         NS.add_profile('dtdt_sub', Gr, Pa)
+        NS.add_profile('dudt_cor', Gr, Pa)
+        NS.add_profile('dvdt_cor', Gr, Pa)
 
 
         return
@@ -535,12 +547,18 @@ cdef class ForcingGCMNew:
             Pa.root_print('Updating forcing')
 
             rdr = cfreader(self.file, self.site)
+            self.lat = rdr.get_value('lat')
+            Pa.root_print(self.lat)
+            self.coriolis_param = 2.0 * omega * sin(self.lat * pi / 180.0)
             self.temp = rdr.get_interp_profile_old('temp', Gr.zp_half)
             self.sphum = rdr.get_interp_profile_old('sphum', Gr.zp_half)
             self.ucomp = rdr.get_interp_profile_old('ucomp', Gr.zp_half)
             self.vcomp = rdr.get_interp_profile_old('vcomp', Gr.zp_half)
             temp_at_zp = rdr.get_interp_profile('temp', Gr.zp)
             sphum_at_zp = rdr.get_interp_profile('sphum', Gr.zp)
+            if self.add_ls_pgradient:
+                self.ug = rdr.get_interp_profile_old('u_geos', Gr.zp_half)
+                self.vg = rdr.get_interp_profile_old('v_geos', Gr.zp_half)
             if self.add_advection:
                 self.t_tend_adv = rdr.get_interp_profile_old('tnta', Gr.zp_half)
                 self.qt_tend_adv = rdr.get_interp_profile_old('tnhusa',Gr.zp_half)
@@ -564,6 +582,10 @@ cdef class ForcingGCMNew:
                 self.subsidence = -np.array(self.omega_vv) * alpha / g
             Pa.root_print('Finished updating forcing')
 
+        # Apply Coriolis forcing
+        if self.add_coriolis:
+            coriolis_force(&Gr.dims, &PV.values[u_shift], &PV.values[v_shift], &PV.tendencies[u_shift],
+                           &PV.tendencies[v_shift], &self.ug[0], &self.vg[0], self.coriolis_param, Ref.u0, Ref.v0)
         # Apply subsidence
         if self.add_subsidence:
             apply_subsidence(&Gr.dims, &Ref.rho0[0], &Ref.rho0_half[0], &self.subsidence[0], &PV.values[s_shift], &PV.tendencies[s_shift])
@@ -631,11 +653,24 @@ cdef class ForcingGCMNew:
             Py_ssize_t istride = Gr.dims.nlg[1] * Gr.dims.nlg[2]
             Py_ssize_t jstride = Gr.dims.nlg[2]
             Py_ssize_t i,j,k,ishift,jshift,ijk
+            Py_ssize_t u_shift = PV.get_varshift(Gr, 'u')
+            Py_ssize_t v_shift = PV.get_varshift(Gr, 'v')
             Py_ssize_t s_shift = PV.get_varshift(Gr, 's')
             Py_ssize_t qt_shift = PV.get_varshift(Gr, 'qt')
             Py_ssize_t t_shift = DV.get_varshift(Gr, 'temperature')
             double [:] tmp_tendency  = np.zeros((Gr.dims.npg),dtype=np.double,order='c')
+            double [:] tmp_tendency_2  = np.zeros((Gr.dims.npg),dtype=np.double,order='c')
             double [:] mean_tendency = np.empty((Gr.dims.nlg[2],),dtype=np.double,order='c')
+            double [:] mean_tendency_2 = np.empty((Gr.dims.nlg[2],),dtype=np.double,order='c')
+        
+        # Output Coriolis tendencies
+        if self.add_coriolis:
+            coriolis_force(&Gr.dims,&PV.values[u_shift],&PV.values[v_shift],&tmp_tendency[0],
+                           &tmp_tendency_2[0],&self.ug[0], &self.vg[0],self.coriolis_param, Ref.u0, Ref.v0)
+        mean_tendency = Pa.HorizontalMean(Gr,&tmp_tendency[0])
+        mean_tendency_2 = Pa.HorizontalMean(Gr,&tmp_tendency_2[0])
+        NS.write_profile('dudt_cor',mean_tendency[Gr.dims.gw:-Gr.dims.gw],Pa)
+        NS.write_profile('dvdt_cor',mean_tendency_2[Gr.dims.gw:-Gr.dims.gw],Pa)
 
         #Output subsidence tendencies
         tmp_tendency[:] = 0.0
