@@ -17,6 +17,10 @@ cdef class RadiationBase:
         double srf_lw_up
         double srf_sw_down
         double srf_sw_up
+        double toa_lw_down
+        double toa_lw_up
+        double toa_sw_down
+        double toa_sw_up
 
 
 
@@ -89,6 +93,14 @@ cdef class RadiationRRTM(RadiationBase):
         Py_ssize_t n_ext
         double stretch_factor
         double patch_pressure
+        double srf_lw_down_clr
+        double srf_lw_up_clr
+        double srf_sw_down_clr
+        double srf_sw_up_clr
+        double toa_lw_down_clr
+        double toa_lw_up_clr
+        double toa_sw_down_clr
+        double toa_sw_up_clr
         double [:] lw_flux_up
         double [:] lw_flux_up_clr
         double [:] lw_flux_down
