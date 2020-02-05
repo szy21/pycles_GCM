@@ -527,7 +527,7 @@ cdef class RadiationRRTM(RadiationBase):
             self.coszen = namelist['radiation']['RRTM']['coszen']
         except:
             if (self.toa_sw > 0.0):
-                self.coszen = self.toa_sw / self.scon 
+                self.coszen = self.toa_sw / (self.scon * self.adjes)
             else:
                 Pa.root_print('Mean Daytime cos(SZA) not set so RadiationRRTM takes default value: coszen = 2.0/pi .')
                 self.coszen = 2.0/pi
