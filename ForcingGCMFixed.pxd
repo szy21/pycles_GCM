@@ -78,6 +78,7 @@ cdef class ForcingGCMNew:
         double tau_wind
         bint add_advection
         bint add_horiz_advection
+        bint read_horiz_advection
         bint add_subsidence
         bint add_subsidence_wind
         bint add_coriolis

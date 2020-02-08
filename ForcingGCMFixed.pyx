@@ -456,6 +456,10 @@ cdef class ForcingGCMNew:
         except:
             self.add_horiz_advection = False
         try:
+            self.read_horiz_advection = namelist['forcing']['read_horiz_advection']
+        except:
+            self.read_horiz_advection = True
+        try:
             self.add_subsidence = namelist['forcing']['add_subsidence']
         except:
             self.add_subsidence = False
@@ -569,19 +573,23 @@ cdef class ForcingGCMNew:
                 self.t_tend_adv = rdr.get_interp_profile_old('tnta', Gr.zp_half)
                 self.qt_tend_adv = rdr.get_interp_profile_old('tnhusa',Gr.zp_half)
             if self.add_horiz_advection:
-                tnta = rdr.get_interp_profile_old('tnta', Gr.zp_half)
-                tnhusa = rdr.get_interp_profile_old('tnhusa',Gr.zp_half)
-                tntwork =  rdr.get_interp_profile_old('tntwork', Gr.zp_half)
-                omega_vv = rdr.get_interp_profile_old('omega', Gr.zp_half)
-                alpha = rdr.get_interp_profile_old('alpha', Gr.zp_half)
-                subsidence = -np.array(omega_vv) * alpha / g
-                temp_hadv_fluc = np.zeros(np.shape(tnta))
-                sphum_hadv_fluc = np.zeros(np.shape(tnta))
-                for k in xrange(temp_at_zp.shape[0]-1):
-                    temp_hadv_fluc[k] = tnta[k] - tntwork[k] + ((temp_at_zp[k+1]-temp_at_zp[k]) * Gr.dims.dxi[2] * Gr.dims.imetl_half[k]) * subsidence[k]
-                    sphum_hadv_fluc[k] = tnhusa[k] + ((sphum_at_zp[k+1]-sphum_at_zp[k]) * Gr.dims.dxi[2] * Gr.dims.imetl_half[k]) * subsidence[k]
-                self.t_tend_hadv = temp_hadv_fluc #hadv includes vertical fluctuation
-                self.qt_tend_hadv = sphum_hadv_fluc
+                if self.read_horiz_advection:
+                    self.t_tend_hadv = rdr.get_interp_profile_old('tntha', Gr.zp_half)
+                    self.qt_tend_hadv = rdr.get_interp_profile_old('tnhusha', Gr.zp_half)
+                else:
+                    tnta = rdr.get_interp_profile_old('tnta', Gr.zp_half)
+                    tnhusa = rdr.get_interp_profile_old('tnhusa',Gr.zp_half)
+                    tntwork =  rdr.get_interp_profile_old('tntwork', Gr.zp_half)
+                    omega_vv = rdr.get_interp_profile_old('omega', Gr.zp_half)
+                    alpha = rdr.get_interp_profile_old('alpha', Gr.zp_half)
+                    subsidence = -np.array(omega_vv) * alpha / g
+                    temp_hadv_fluc = np.zeros(np.shape(tnta))
+                    sphum_hadv_fluc = np.zeros(np.shape(tnta))
+                    for k in xrange(temp_at_zp.shape[0]-1):
+                        temp_hadv_fluc[k] = tnta[k] - tntwork[k] + ((temp_at_zp[k+1]-temp_at_zp[k]) * Gr.dims.dxi[2] * Gr.dims.imetl_half[k]) * subsidence[k]
+                        sphum_hadv_fluc[k] = tnhusa[k] + ((sphum_at_zp[k+1]-sphum_at_zp[k]) * Gr.dims.dxi[2] * Gr.dims.imetl_half[k]) * subsidence[k]
+                    self.t_tend_hadv = temp_hadv_fluc #hadv includes vertical fluctuation
+                    self.qt_tend_hadv = sphum_hadv_fluc
             if self.add_subsidence or self.add_subsidence_wind:
                 self.omega_vv = rdr.get_interp_profile_old('omega', Gr.zp_half)
                 alpha = rdr.get_interp_profile_old('alpha', Gr.zp_half)
