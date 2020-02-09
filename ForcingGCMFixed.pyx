@@ -452,9 +452,17 @@ cdef class ForcingGCMNew:
         except:
             self.add_advection = False
         try:
+            self.add_horiz_adv_vert_fluc = namelist['forcing']['add_horiz_adv_vert_fluc']
+        except:
+            self.add_horiz_adv_vert_fluc = False
+        try:
             self.add_horiz_advection = namelist['forcing']['add_horiz_advection']
         except:
             self.add_horiz_advection = False
+        try:
+            self.add_vert_fluctuation = namelist['forcing']['add_vert_fluctuation']
+        except:
+            self.add_vert_fluctuation = False
         try:
             self.add_subsidence = namelist['forcing']['add_subsidence']
         except:
@@ -463,11 +471,11 @@ cdef class ForcingGCMNew:
             self.add_subsidence_wind = namelist['forcing']['add_subsidence_wind']
         except:
             self.add_subsidence_wind = False
-        if self.add_advection and self.add_horiz_advection:
-            Pa.root_print('ForcingGCMNew: Cannot specify both total advective tendency and horizontal advective tendency')
+        if self.add_advection and (self.add_horiz_adv_vert_fluc or self.add_horiz_advection or self.add_vert_fluctuation or self.add_subsidence):
+            Pa.root_print('ForcingGCMNew: Cannot specify both total advective tendency and different terms of advective tendency')
             Pa.kill()
-        if self.add_advection and self.add_subsidence:
-            Pa.root_print('ForcingGCMNew: Cannot specify both total advective tendency and subsidence')
+        if self.add_horiz_adv_vert_fluc and (self.add_horiz_advection or self.add_vert_fluctuation):
+            Pa.root_print('ForcingGCMNew: Cannot specify horizontal advection or vertical fluctuation when add_horiz_adv_vert_fluc is set to True')
             Pa.kill()
         try:
             self.add_coriolis = namelist['forcing']['add_coriolis']
@@ -493,6 +501,8 @@ cdef class ForcingGCMNew:
         self.s_tend_adv = np.zeros(Gr.dims.npg,dtype=np.double,order='c')
         self.qt_tend_hadv = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
         self.t_tend_hadv = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
+        self.qt_tend_fluc = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
+        self.t_tend_fluc = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
         self.s_tend_hadv = np.zeros(Gr.dims.npg,dtype=np.double,order='c')
         self.subsidence = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
         self.ug = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
@@ -509,6 +519,8 @@ cdef class ForcingGCMNew:
         NS.add_profile('dqtdt_hadv', Gr, Pa)
         NS.add_profile('dtdt_hadv', Gr, Pa)
         NS.add_profile('dsdt_hadv', Gr, Pa)
+        NS.add_profile('dqtdt_fluc', Gr, Pa)
+        NS.add_profile('dtdt_fluc', Gr, Pa)
         NS.add_profile('dqtdt_sub', Gr, Pa)
         NS.add_profile('dtdt_sub', Gr, Pa)
         NS.add_profile('dudt_sub', Gr, Pa)
@@ -568,7 +580,7 @@ cdef class ForcingGCMNew:
             if self.add_advection:
                 self.t_tend_adv = rdr.get_interp_profile_old('tnta', Gr.zp_half)
                 self.qt_tend_adv = rdr.get_interp_profile_old('tnhusa',Gr.zp_half)
-            if self.add_horiz_advection:
+            if self.add_horiz_adv_vert_fluc:
                 tnta = rdr.get_interp_profile_old('tnta', Gr.zp_half)
                 tnhusa = rdr.get_interp_profile_old('tnhusa',Gr.zp_half)
                 tntwork =  rdr.get_interp_profile_old('tntwork', Gr.zp_half)
@@ -582,6 +594,22 @@ cdef class ForcingGCMNew:
                     sphum_hadv_fluc[k] = tnhusa[k] + ((sphum_at_zp[k+1]-sphum_at_zp[k]) * Gr.dims.dxi[2] * Gr.dims.imetl_half[k]) * subsidence[k]
                 self.t_tend_hadv = temp_hadv_fluc #hadv includes vertical fluctuation
                 self.qt_tend_hadv = sphum_hadv_fluc
+            if self.add_horiz_advection:
+                self.t_tend_hadv = rdr.get_interp_profile_old('tntha', Gr.zp_half)
+                self.qt_tend_hadv = rdr.get_interp_profile_old('tnhusha', Gr.zp_half)
+            if self.add_vert_fluctuation:
+                tntva = rdr.get_interp_profile_old('tntva', Gr.zp_half)
+                tnhusva = rdr.get_interp_profile_old('tnhusva',Gr.zp_half)
+                omega_vv = rdr.get_interp_profile_old('omega', Gr.zp_half)
+                alpha = rdr.get_interp_profile_old('alpha', Gr.zp_half)
+                subsidence = -np.array(omega_vv) * alpha / g
+                temp_fluc = np.zeros(np.shape(tntva))
+                sphum_fluc = np.zeros(np.shape(tntva))
+                for k in xrange(temp_at_zp.shape[0]-1):
+                    temp_fluc[k] = tntva[k] + ((temp_at_zp[k+1]-temp_at_zp[k]) * Gr.dims.dxi[2] * Gr.dims.imetl_half[k]) * subsidence[k]
+                    sphum_fluc[k] = tnhusva[k] + ((sphum_at_zp[k+1]-sphum_at_zp[k]) * Gr.dims.dxi[2] * Gr.dims.imetl_half[k]) * subsidence[k]
+                self.t_tend_fluc = temp_fluc
+                self.qt_tend_fluc = sphum_fluc
             if self.add_subsidence or self.add_subsidence_wind:
                 self.omega_vv = rdr.get_interp_profile_old('omega', Gr.zp_half)
                 alpha = rdr.get_interp_profile_old('alpha', Gr.zp_half)
@@ -635,8 +663,8 @@ cdef class ForcingGCMNew:
                         pv = pv_c(p0,qt,qv)
                         t  = DV.values[t_shift + ijk]
                         
-                        total_t_source = self.t_tend_hadv[k] + self.t_tend_adv[k] + self.t_tend_nudge[k]
-                        total_qt_source = self.qt_tend_hadv[k] + self.qt_tend_adv[k] + self.qt_tend_nudge[k] 
+                        total_t_source = self.t_tend_hadv[k] + self.t_tend_fluc[k] + self.t_tend_adv[k] + self.t_tend_nudge[k]
+                        total_qt_source = self.qt_tend_hadv[k] + self.qt_tend_fluc[k] + self.qt_tend_adv[k] + self.qt_tend_nudge[k] 
                         PV.tendencies[s_shift + ijk] += s_tendency_c(p0, qt, qv, t, total_qt_source, total_t_source)
                         PV.tendencies[qt_shift + ijk] += total_qt_source
                         #PV.tendencies[s_shift + ijk] += (cpm_c(qt) * (self.t_tend_adv[k]+self.t_tend_nudge[k]))/t
@@ -718,6 +746,8 @@ cdef class ForcingGCMNew:
         NS.write_profile('dsdt_adv',mean_tendency[Gr.dims.gw:-Gr.dims.gw],Pa)
         NS.write_profile('dqtdt_hadv', self.qt_tend_hadv[Gr.dims.gw:-Gr.dims.gw], Pa)
         NS.write_profile('dtdt_hadv', self.t_tend_hadv[Gr.dims.gw:-Gr.dims.gw], Pa)
+        NS.write_profile('dqtdt_fluc', self.qt_tend_fluc[Gr.dims.gw:-Gr.dims.gw], Pa)
+        NS.write_profile('dtdt_fluc', self.t_tend_fluc[Gr.dims.gw:-Gr.dims.gw], Pa)
         mean_tendency = Pa.HorizontalMean(Gr,&self.s_tend_hadv[0])
         NS.write_profile('dsdt_hadv',mean_tendency[Gr.dims.gw:-Gr.dims.gw],Pa)
 
