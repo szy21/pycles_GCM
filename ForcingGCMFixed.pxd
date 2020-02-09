@@ -77,8 +77,9 @@ cdef class ForcingGCMNew:
         double tau_scalar
         double tau_wind
         bint add_advection
+        bint add_horiz_adv_vert_fluc
         bint add_horiz_advection
-        bint read_horiz_advection
+        bint add_vert_fluctuation
         bint add_subsidence
         bint add_subsidence_wind
         bint add_coriolis
@@ -93,6 +94,8 @@ cdef class ForcingGCMNew:
         double [:] qt_tend_hadv
         double [:] t_tend_hadv
         double [:] s_tend_hadv
+        double [:] qt_tend_fluc
+        double [:] t_tend_fluc
         double [:] omega_vv
         double [:] subsidence
         str file
