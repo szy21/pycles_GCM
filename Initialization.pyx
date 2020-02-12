@@ -1552,8 +1552,8 @@ def InitGCMNew(namelist, Grid.Grid Gr,PrognosticVariables.PrognosticVariables PV
 
 
     RS.Pg = rdr.get_timeseries_mean('ps')
-    RS.Tg = rdr.get_timeseries_mean('t_surf')
-    RS.qtg = rdr.get_profile_mean('sphum')[0]
+    RS.Tg = rdr.get_timeseries_mean('ts')
+    RS.qtg = rdr.get_profile_mean('hus')[0]
 
     RS.u0 = 0.0
     RS.v0 = 0.0
@@ -1575,10 +1575,10 @@ def InitGCMNew(namelist, Grid.Grid Gr,PrognosticVariables.PrognosticVariables PV
 
 
 
-    cdef double [:] t = rdr.get_interp_profile('temp', Gr.zp_half)#interp_pchip(Gr.zp_half, z_in, np.log(t_in))
-    cdef double [:] qt = rdr.get_interp_profile('sphum', Gr.zp_half)
-    cdef double [:] u = rdr.get_interp_profile('ucomp', Gr.zp_half)
-    cdef double [:] v = rdr.get_interp_profile('vcomp', Gr.zp_half)
+    cdef double [:] t = rdr.get_interp_profile('ta', Gr.zp_half)#interp_pchip(Gr.zp_half, z_in, np.log(t_in))
+    cdef double [:] qt = rdr.get_interp_profile('hus', Gr.zp_half)
+    cdef double [:] u = rdr.get_interp_profile('ua', Gr.zp_half)
+    cdef double [:] v = rdr.get_interp_profile('va', Gr.zp_half)
 
 
 

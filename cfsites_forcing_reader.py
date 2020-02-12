@@ -80,7 +80,7 @@ class cfreader:
         '''
 
         data = self.get_profile_mean(var, zero_bottom)
-        z_gcm = self.get_profile_mean('height', zero_bottom=True)
+        z_gcm = self.get_profile_mean('zg', zero_bottom=True)
 
         yn, dir_loc = mdi_interp(z_gcm, data, z) 
 
@@ -99,7 +99,7 @@ class cfreader:
         '''
 
         data = self.get_profile_mean(var, zero_bottom)
-        z_gcm = self.get_profile_mean('height', zero_bottom=True)
+        z_gcm = self.get_profile_mean('zg', zero_bottom=True)
         #print data 
         #print z_gcm 
         p_interp1= pchip(z_gcm[:].filled(), data[:].filled())#np.interp(z, z_gcm[:], data[:])
@@ -166,7 +166,7 @@ if __name__ == "__main__":
 
     vars = ['temp', 'sphum',
             'ucomp', 'vcomp']
-    height_gcm = rdr.get_profile_mean('height')
+    height_gcm = rdr.get_profile_mean('zg')
     height_les = np.linspace(0.0, 25600.0, 256)
     for v in vars:
         var_gcm = rdr.get_profile_mean(v)

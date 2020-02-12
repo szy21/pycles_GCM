@@ -460,9 +460,9 @@ cdef class RayleighGCMNew:
         #Compute height for damping profiles
         #dt_qg_conv = np.mean(input_data_tv['dt_qg_param'][:,::-1],axis=0)
         #zfull = rdr.get_profile_mean('height')#np.mean(input_data_tv['zfull'][:,::-1], axis=0)
-        temp = rdr.get_interp_profile('temp', Gr.zp_half)
-        self.ucomp = rdr.get_interp_profile('ucomp', Gr.zp_half)
-        self.vcomp = rdr.get_interp_profile('vcomp', Gr.zp_half)
+        temp = rdr.get_interp_profile('ta', Gr.zp_half)
+        self.ucomp = rdr.get_interp_profile('ua', Gr.zp_half)
+        self.vcomp = rdr.get_interp_profile('va', Gr.zp_half)
         #temp = interp_pchip(Gr.zp_half, zfull, temp)
         #import pylab as plt
         #plt.plot(np.abs(dt_qg_conv))
