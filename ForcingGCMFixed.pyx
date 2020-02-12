@@ -568,12 +568,12 @@ cdef class ForcingGCMNew:
             self.lat = rdr.get_value('lat')
             Pa.root_print(self.lat)
             self.coriolis_param = 2.0 * omega * sin(self.lat * pi / 180.0)
-            self.temp = rdr.get_interp_profile_old('temp', Gr.zp_half)
-            self.sphum = rdr.get_interp_profile_old('sphum', Gr.zp_half)
-            self.ucomp = rdr.get_interp_profile_old('ucomp', Gr.zp_half)
-            self.vcomp = rdr.get_interp_profile_old('vcomp', Gr.zp_half)
-            temp_at_zp = rdr.get_interp_profile('temp', Gr.zp)
-            sphum_at_zp = rdr.get_interp_profile('sphum', Gr.zp)
+            self.temp = rdr.get_interp_profile_old('ta', Gr.zp_half)
+            self.sphum = rdr.get_interp_profile_old('hus', Gr.zp_half)
+            self.ucomp = rdr.get_interp_profile_old('ua', Gr.zp_half)
+            self.vcomp = rdr.get_interp_profile_old('va', Gr.zp_half)
+            temp_at_zp = rdr.get_interp_profile('ta', Gr.zp)
+            sphum_at_zp = rdr.get_interp_profile('hus', Gr.zp)
             if self.add_ls_pgradient:
                 self.ug = rdr.get_interp_profile_old('u_geos', Gr.zp_half)
                 self.vg = rdr.get_interp_profile_old('v_geos', Gr.zp_half)
@@ -584,7 +584,7 @@ cdef class ForcingGCMNew:
                 tnta = rdr.get_interp_profile_old('tnta', Gr.zp_half)
                 tnhusa = rdr.get_interp_profile_old('tnhusa',Gr.zp_half)
                 tntwork =  rdr.get_interp_profile_old('tntwork', Gr.zp_half)
-                omega_vv = rdr.get_interp_profile_old('omega', Gr.zp_half)
+                omega_vv = rdr.get_interp_profile_old('wap', Gr.zp_half)
                 alpha = rdr.get_interp_profile_old('alpha', Gr.zp_half)
                 subsidence = -np.array(omega_vv) * alpha / g
                 temp_hadv_fluc = np.zeros(np.shape(tnta))
@@ -600,7 +600,7 @@ cdef class ForcingGCMNew:
             if self.add_vert_fluctuation:
                 tntva = rdr.get_interp_profile_old('tntva', Gr.zp_half)
                 tnhusva = rdr.get_interp_profile_old('tnhusva',Gr.zp_half)
-                omega_vv = rdr.get_interp_profile_old('omega', Gr.zp_half)
+                omega_vv = rdr.get_interp_profile_old('wap', Gr.zp_half)
                 alpha = rdr.get_interp_profile_old('alpha', Gr.zp_half)
                 subsidence = -np.array(omega_vv) * alpha / g
                 temp_fluc = np.zeros(np.shape(tntva))
@@ -611,7 +611,7 @@ cdef class ForcingGCMNew:
                 self.t_tend_fluc = temp_fluc
                 self.qt_tend_fluc = sphum_fluc
             if self.add_subsidence or self.add_subsidence_wind:
-                self.omega_vv = rdr.get_interp_profile_old('omega', Gr.zp_half)
+                self.omega_vv = rdr.get_interp_profile_old('wap', Gr.zp_half)
                 alpha = rdr.get_interp_profile_old('alpha', Gr.zp_half)
                 self.subsidence = -np.array(self.omega_vv) * alpha / g
             Pa.root_print('Finished updating forcing')

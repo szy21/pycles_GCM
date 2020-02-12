@@ -538,7 +538,7 @@ cdef class RadiationRRTM(RadiationBase):
             self.toa_sw = 420.0
         if self.read_file:
             rdr = cfreader(self.file, self.site)
-            self.toa_sw = rdr.get_timeseries_mean('swdn_toa')
+            self.toa_sw = rdr.get_timeseries_mean('rsdt')
 
         try:
             self.coszen = namelist['radiation']['RRTM']['coszen']
@@ -643,8 +643,8 @@ cdef class RadiationRRTM(RadiationBase):
         elif self.read_file:
             rdr = cfreader(self.file, self.site)
             pressures = rdr.get_profile_mean('pfull')
-            temperatures = rdr.get_profile_mean('temp')
-            vapor_mixing_ratios = rdr.get_profile_mean('sphum')
+            temperatures = rdr.get_profile_mean('ta')
+            vapor_mixing_ratios = rdr.get_profile_mean('hus')
         else:
             pressures = profile_data[self.profile_name]['pressure'][:]
             temperatures = profile_data[self.profile_name]['temperature'][:]

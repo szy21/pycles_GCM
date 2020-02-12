@@ -1461,7 +1461,7 @@ cdef class SurfaceGCMNew(SurfaceBase):
 
         rdr = cfreader(self.file, self.site)
 
-        self.T_surface = rdr.get_timeseries_mean('t_surf')
+        self.T_surface = rdr.get_timeseries_mean('ts')
         return
 
     cpdef update(self, Grid.Grid Gr, ReferenceState.ReferenceState Ref, PrognosticVariables.PrognosticVariables PV,
