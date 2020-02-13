@@ -556,8 +556,8 @@ cdef class ForcingGCMNew:
             double u0_new, v0_new
             double [:] qt_mean = Pa.HorizontalMean(Gr, &PV.values[qt_shift])
             double [:] t_mean = Pa.HorizontalMean(Gr, &DV.values[t_shift])
-            double [:] u_mean = Pa.HorizontalMean(Gr, &DV.values[u_shift])
-            double [:] v_mean = Pa.HorizontalMean(Gr, &DV.values[v_shift])
+            double [:] u_mean = Pa.HorizontalMean(Gr, &PV.values[u_shift])
+            double [:] v_mean = Pa.HorizontalMean(Gr, &PV.values[v_shift])
 
         if not self.gcm_profiles_initialized:
             self.t_indx = int(TS.t // (3600.0 * 6.0))
@@ -636,7 +636,7 @@ cdef class ForcingGCMNew:
                     xi_relax_scalar[k] = 1.0 / self.tau_scalar
                     # Nudging rates
                     self.qt_tend_nudge[k] = -xi_relax_scalar[k] * (qt_mean[k] - self.sphum[k])
-                    self.t_tend_nudge[k]  = -xi_relax_scalar[k] * (t_mean[k] - self.temp[k])
+                    self.t_tend_nudge[k] = -xi_relax_scalar[k] * (t_mean[k] - self.temp[k])
         
         if self.relax_wind:
             with nogil:
@@ -644,7 +644,7 @@ cdef class ForcingGCMNew:
                     xi_relax_wind[k] = 1.0 / self.tau_wind
                     # Nudging rates
                     self.u_tend_nudge[k] = -xi_relax_wind[k] * (u_mean[k] - self.ucomp[k])
-                    self.v_tend_nudge[k]  = -xi_relax_wind[k] * (v_mean[k] - self.vcomp[k])
+                    self.v_tend_nudge[k] = -xi_relax_wind[k] * (v_mean[k] - self.vcomp[k])
 
         cdef double total_t_source, total_qt_source
 
