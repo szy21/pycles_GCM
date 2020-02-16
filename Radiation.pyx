@@ -40,8 +40,14 @@ def RadiationFactory(namelist, LatentHeat LH, ParallelMPI.ParallelMPI Pa):
         use_rrtm = namelist['radiation']['use_RRTM']
     except:
         use_rrtm = False
+    try:
+        prescribe_radiation = namelist['radiation']['prescribe_radiation']
+    except:
+        prescribe_radiation = False
     if use_rrtm:
-        return RadiationRRTM(namelist,LH, Pa)
+        return RadiationRRTM(namelist, LH, Pa)
+    elif prescribe_radiation:
+        return RadiationPrescribed(namelist, LH, Pa)
     else:
         casename = namelist['meta']['casename']
         if casename == 'DYCOMS_RF01':
@@ -165,6 +171,79 @@ cdef class RadiationNone(RadiationBase):
         return
     cpdef stats_io(self, Grid.Grid Gr, ReferenceState.ReferenceState Ref, DiagnosticVariables.DiagnosticVariables DV,
                    NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa):
+        return
+
+
+cdef class RadiationPrescribed(RadiationBase):
+ 
+    def __init__(self, namelist, LatentHeat LH, ParallelMPI.ParallelMPI Pa):
+        self.file = str(namelist['gcm']['file'])
+        self.site = namelist['gcm']['site']
+
+        return
+
+    cpdef initialize(self, Grid.Grid Gr, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa):
+        self.t_tend_rad = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
+        self.s_tend_rad = np.zeros(Gr.dims.npg,dtype=np.double,order='c')
+        NS.add_profile('dtdt_rad', Gr, Pa)
+        NS.add_profile('dsdt_rad', Gr, Pa)
+
+        return
+
+    cpdef initialize_profiles(self, Grid.Grid Gr, ReferenceState.ReferenceState Ref, DiagnosticVariables.DiagnosticVariables DV,
+                     NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa):
+
+       return
+
+    cpdef update(self, Grid.Grid Gr, ReferenceState.ReferenceState Ref,
+                 PrognosticVariables.PrognosticVariables PV, DiagnosticVariables.DiagnosticVariables DV,
+                 Surface.SurfaceBase Sur,TimeStepping.TimeStepping TS, ParallelMPI.ParallelMPI Pa):
+
+        cdef:
+            Py_ssize_t imin = Gr.dims.gw
+            Py_ssize_t jmin = Gr.dims.gw
+            Py_ssize_t kmin = Gr.dims.gw
+            Py_ssize_t imax = Gr.dims.nlg[0] - Gr.dims.gw
+            Py_ssize_t jmax = Gr.dims.nlg[1] - Gr.dims.gw
+            Py_ssize_t kmax = Gr.dims.nlg[2] - Gr.dims.gw
+            Py_ssize_t istride = Gr.dims.nlg[1] * Gr.dims.nlg[2]
+            Py_ssize_t jstride = Gr.dims.nlg[2]
+            Py_ssize_t i,j,k,ishift,jshift,ijk
+            Py_ssize_t s_shift = PV.get_varshift(Gr, 's')
+            Py_ssize_t qt_shift = PV.get_varshift(Gr, 'qt')
+            Py_ssize_t t_shift = DV.get_varshift(Gr, 'temperature')
+        
+        if not self.gcm_profiles_initialized:
+            self.gcm_profiles_initialized = True
+            Pa.root_print('Updating prescribed radiation')
+            rdr = cfreader(self.file, self.site)
+            self.t_tend_rad = rdr.get_interp_profile_old('tntr', Gr.zp_half)
+
+        # Now update entropy tendencies
+        if 's' in PV.name_index:
+            s_shift = PV.get_varshift(Gr, 's')
+            with nogil:
+                for i in xrange(imin, imax):
+                    ishift = i * istride
+                    for j in xrange(jmin, jmax):
+                        jshift = j * jstride
+                        for k in xrange(kmin, kmax):
+                            ijk = ishift + jshift + k
+                            self.s_tend_rad[ijk] = cpm_c(PV.values[ijk+qt_shift]) * self.t_tend_rad[k] / DV.values[ijk+t_shift]
+                            PV.tendencies[s_shift + ijk] += self.s_tend_rad[ijk]
+        return
+
+    cpdef stats_io(self, Grid.Grid Gr, ReferenceState.ReferenceState Ref, DiagnosticVariables.DiagnosticVariables DV,
+                   NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa):
+
+        cdef:
+            Py_ssize_t gw = Gr.dims.gw
+            double [:] mean_tendency = np.empty((Gr.dims.nlg[2],),dtype=np.double,order='c')
+        
+        NS.write_profile('dtdt_rad', self.t_tend_rad[Gr.dims.gw:-Gr.dims.gw], Pa)
+        mean_tendency = Pa.HorizontalMean(Gr,&self.s_tend_rad[0])
+        NS.write_profile('dsdt_rad',mean_tendency[Gr.dims.gw:-Gr.dims.gw],Pa)
+        
         return
 
 
