@@ -92,10 +92,6 @@ cdef class RadiationBase:
         NS.add_ts('srf_lw_flux_down', Gr, Pa)
         NS.add_ts('srf_sw_flux_up', Gr, Pa)
         NS.add_ts('srf_sw_flux_down', Gr, Pa)
-        NS.add_ts('toa_lw_flux_up', Gr, Pa)
-        NS.add_ts('toa_lw_flux_down', Gr, Pa)
-        NS.add_ts('toa_sw_flux_up', Gr, Pa)
-        NS.add_ts('toa_sw_flux_down', Gr, Pa)
 
 
         return
@@ -150,10 +146,6 @@ cdef class RadiationBase:
         NS.write_ts('srf_lw_flux_down', self.srf_lw_down, Pa)
         NS.write_ts('srf_sw_flux_up', self.srf_sw_up, Pa)
         NS.write_ts('srf_sw_flux_down', self.srf_sw_down, Pa)
-        NS.write_ts('toa_lw_flux_up',self.toa_lw_up, Pa ) # Units are W/m^2
-        NS.write_ts('toa_lw_flux_down', self.toa_lw_down, Pa)
-        NS.write_ts('toa_sw_flux_up', self.toa_sw_up, Pa)
-        NS.write_ts('toa_sw_flux_down', self.toa_sw_down, Pa)
         return
 
 
@@ -680,6 +672,10 @@ cdef class RadiationRRTM(RadiationBase):
         NS.add_profile('sw_flux_down', Gr, Pa)
         NS.add_profile('sw_flux_down_clr', Gr, Pa)
 
+        NS.add_ts('toa_lw_flux_up', Gr, Pa)
+        NS.add_ts('toa_lw_flux_down', Gr, Pa)
+        NS.add_ts('toa_sw_flux_up', Gr, Pa)
+        NS.add_ts('toa_sw_flux_down', Gr, Pa)
         NS.add_ts('srf_lw_flux_up_clr', Gr, Pa)
         NS.add_ts('srf_lw_flux_down_clr', Gr, Pa)
         NS.add_ts('srf_sw_flux_up_clr', Gr, Pa)
@@ -1248,6 +1244,10 @@ cdef class RadiationRRTM(RadiationBase):
         tmp = Pa.HorizontalMean(Gr, &self.sw_flux_down_clr[0])
         NS.write_profile('sw_flux_down_clr', tmp[Gr.dims.gw:-Gr.dims.gw], Pa)
 
+        NS.write_ts('toa_lw_flux_up',self.toa_lw_up, Pa ) # Units are W/m^2
+        NS.write_ts('toa_lw_flux_down', self.toa_lw_down, Pa)
+        NS.write_ts('toa_sw_flux_up', self.toa_sw_up, Pa)
+        NS.write_ts('toa_sw_flux_down', self.toa_sw_down, Pa)
         NS.write_ts('srf_lw_flux_up_clr',self.srf_lw_up_clr, Pa ) # Units are W/m^2
         NS.write_ts('srf_lw_flux_down_clr', self.srf_lw_down_clr, Pa)
         NS.write_ts('srf_sw_flux_up_clr', self.srf_sw_up_clr, Pa)
