@@ -88,6 +88,7 @@ cdef class RadiationBase:
         NS.add_profile('radiative_heating_rate', Gr, Pa)
         NS.add_profile('radiative_entropy_tendency', Gr, Pa)
         NS.add_profile('radiative_temperature_tendency',Gr, Pa)
+        NS.add_profile('dtdt_rad',Gr, Pa)
         NS.add_ts('srf_lw_flux_up', Gr, Pa)
         NS.add_ts('srf_lw_flux_down', Gr, Pa)
         NS.add_ts('srf_sw_flux_up', Gr, Pa)
@@ -140,6 +141,7 @@ cdef class RadiationBase:
 
         tmp = Pa.HorizontalMean(Gr, &self.dTdt_rad[0])
         NS.write_profile('radiative_temperature_tendency', tmp[Gr.dims.gw:-Gr.dims.gw], Pa)
+        NS.write_profile('dtdt_rad', tmp[Gr.dims.gw:-Gr.dims.gw], Pa)
 
 
         NS.write_ts('srf_lw_flux_up',self.srf_lw_up, Pa ) # Units are W/m^2
