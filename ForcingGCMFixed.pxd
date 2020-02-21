@@ -75,6 +75,8 @@ cdef class ForcingGCMNew:
         bint relax_scalar
         bint relax_wind
         double tau_scalar
+        double z_i
+        double z_r
         double tau_wind
         bint add_advection
         bint add_horiz_adv_vert_fluc
