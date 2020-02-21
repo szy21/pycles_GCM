@@ -440,6 +440,14 @@ cdef class ForcingGCMNew:
         except:
             self.tau_scalar = 21600.0
         try:
+            self.z_i = namelist['forcing']['z_i']
+        except:
+            self.z_i = 5000.0
+        try:
+            self.z_r = namelist['forcing']['z_r']
+        except:
+            self.z_r = 5000.0
+        try:
             self.relax_wind = namelist['forcing']['relax_wind']
         except:
             self.relax_wind = False
@@ -630,13 +638,19 @@ cdef class ForcingGCMNew:
         # Relaxation
         cdef double [:] xi_relax_scalar = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
         cdef double [:] xi_relax_wind = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
+       
         if self.relax_scalar:
             with nogil:
                 for k in xrange(Gr.dims.nlg[2]):
-                    xi_relax_scalar[k] = 1.0 / self.tau_scalar
+                    if Gr.zpl_half[k] >= self.z_r:
+                        xi_relax_scalar[k] = 1.0 / self.tau_scalar
+                    elif Gr.zpl_half[k] < self.z_i:
+                        xi_relax_scalar[k] = 0.0
+                    else:
+                        xi_relax_scalar[k] = 0.5 / self.tau_scalar * (1.0 - cos(pi*(Gr.zpl_half[k]-self.z_i)/(self.z_r-self.z_i)))
                     # Nudging rates
                     self.qt_tend_nudge[k] = -xi_relax_scalar[k] * (qt_mean[k] - self.sphum[k])
-                    self.t_tend_nudge[k] = -xi_relax_scalar[k] * (t_mean[k] - self.temp[k])
+                    self.t_tend_nudge[k]  = -xi_relax_scalar[k] * (t_mean[k] - self.temp[k])
         
         if self.relax_wind:
             with nogil:
