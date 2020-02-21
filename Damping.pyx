@@ -543,7 +543,7 @@ cdef class RayleighGCMNew:
                                 ijk = ishift + jshift + k
                                 PV.tendencies[var_shift + ijk] -= (PV.values[var_shift + ijk] - domain_mean[k]) * self.gamma_z[k]
             elif self.damp_scalar:
-                Pa.root_print('Damping scalar')
+                #Pa.root_print('Damping scalar')
                 with nogil:
                     for i in xrange(imin, imax):
                         ishift = i * istride
