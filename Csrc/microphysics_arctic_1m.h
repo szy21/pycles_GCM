@@ -196,44 +196,45 @@ void get_snow_n0(const struct DimStruct *dims, double* restrict density, double*
 };
 
 void autoconversion_rain(double density, double ccn, double ql, double qrain, double nrain,
-                         double* qrain_tendency){
+                         double* qrain_tendency, int option){
     /* Berry-Reinhardt 74 rain autoconversion model*/
 
-    /*
-    double l2, t2;
-    const double ccn_ = ccn*1.0e-6;
-    double varm6;
+    if(option==1){
+        double l2, t2;
+        const double ccn_ = ccn*1.0e-6;
+        double varm6;
 
-    if(ccn_ > 300.0){
-        varm6 = 1.189633;
+        if(ccn_ > 300.0){
+            varm6 = 1.189633;
+        }
+        else{
+            varm6 = 1.055572;
+        }
+    
+        double lwc = ql*density;
+        double df = liquid_dmean(density, ql, ccn);
+        double db = df*varm6;
+    
+        if(db <= 15.0e-6){
+            *qrain_tendency = 0.0;
+        }
+        else{
+            l2 = 2.7e-2*(1.0e20/16.0*(db*db*db)*df - 0.4)*lwc;
+            t2 = 3.72/(5.0e5*db - 7.5)/lwc;
+            *qrain_tendency = fmax(l2,0.0)/fmax(t2,1.0e-20)/density;
+        }
     }
     else{
-        varm6 = 1.055572;
+        if(ql > SMALL){
+            const double n_d = ccn *1.0e-6;
+            const double d_d = 0.146 - (5.964e-2) * log(n_d/2000.0);
+            const double psi = 1000.0*ql * density;
+            *qrain_tendency = 1.67e-5*psi*psi/(5.0 + (0.036*n_d)/(d_d*psi)) /density;
+        }
+        else{
+           *qrain_tendency = 0.0;
+        }
     }
-
-    double lwc = ql*density;
-    double df = liquid_dmean(density, ql, ccn);
-    double db = df*varm6;
-
-        *qrain_tendency = 0.0;
-    }
-    else{
-        l2 = 2.7e-2*(1.0e20/16.0*(db*db*db)*df - 0.4)*lwc;
-        t2 = 3.72/(5.0e5*db - 7.5)/lwc;
-        *qrain_tendency = fmax(l2,0.0)/fmax(t2,1.0e-20)/density;
-    }
-    */
-
-    if(ql > SMALL){
-        const double n_d = ccn *1.0e-6;
-        const double d_d = 0.146 - (5.964e-2) * log(n_d/2000.0);
-        const double psi = 1000.0*ql * density;
-        *qrain_tendency = 1.67e-5*psi*psi/(5.0 + (0.036*n_d)/(d_d*psi)) /density;
-    }
-    else{
-       *qrain_tendency = 0.0;
-    }
-
 
     return;
 };
@@ -453,7 +454,7 @@ void microphysics_sources(const struct DimStruct *dims, struct LookupStruct *LT,
                              double* restrict qsnow, double* restrict nsnow, double dt,
                              double* restrict qrain_tendency_micro, double* restrict qrain_tendency,
                              double* restrict qsnow_tendency_micro, double* restrict qsnow_tendency,
-                             double* restrict precip_rate, double* restrict evap_rate, double* restrict melt_rate){
+                             double* restrict precip_rate, double* restrict evap_rate, double* restrict melt_rate, int auto_rain_option){
 
     const double b1 = 650.1466922699631;
     const double b2 = -1.222222222222222;
@@ -525,7 +526,7 @@ void microphysics_sources(const struct DimStruct *dims, struct LookupStruct *LT,
                     const double qv_tmp = qt_tmp - ql_tmp - qi_tmp; 
 
 
-                    autoconversion_rain(density[k], ccn, ql_tmp, qrain_tmp, nrain[ijk], &qrain_tendency_aut);
+                    autoconversion_rain(density[k], ccn, ql_tmp, qrain_tmp, nrain[ijk], &qrain_tendency_aut, auto_rain_option);
                     autoconversion_snow(LT, lam_fp, L_fp, density[k], p0[k], temperature[ijk], qv_tmp,
                                         qi_tmp, ni, &qsnow_tendency_aut);
                     accretion_all(density[k], p0[k], temperature[ijk], ccn, ql_tmp, qi_tmp, ni,
@@ -945,7 +946,7 @@ void evaporation_snow_wrapper(const struct DimStruct *dims, struct LookupStruct 
 
 void autoconversion_rain_wrapper(const struct DimStruct *dims, double* restrict density, double ccn,
                                  double* restrict ql, double* restrict qrain, double* restrict nrain,
-                                 double* restrict qrain_tendency){
+                                 double* restrict qrain_tendency, int auto_rain_option){
 
     const ssize_t istride = dims->nlg[1] * dims->nlg[2];
     const ssize_t jstride = dims->nlg[2];
@@ -966,7 +967,7 @@ void autoconversion_rain_wrapper(const struct DimStruct *dims, double* restrict 
                 double ql_tmp = fmax(ql[ijk], 0.0);
                 double qrain_tmp = fmax(qrain[ijk], 0.0);
 
-                autoconversion_rain(density[k], ccn, ql_tmp, qrain_tmp, nrain[ijk], &qrain_tendency[ijk]);
+                autoconversion_rain(density[k], ccn, ql_tmp, qrain_tmp, nrain[ijk], &qrain_tendency[ijk], auto_rain_option);
 
             }
         }
