@@ -47,7 +47,7 @@ cdef extern from "microphysics_arctic_1m.h":
                              double* qsnow, double* nsnow, double dt,
                              double* qrain_tendency_micro, double* qrain_tendency,
                              double* qsnow_tendency_micro, double* qsnow_tendency,
-                             double* precip_rate, double* evap_rate, double* melt_rate) nogil
+                             double* precip_rate, double* evap_rate, double* melt_rate, int auto_rain_option, int evap_rain_option) nogil
     void qt_source_formation(Grid.DimStruct *dims, double* qt_tendency, double* precip_rate, double* evap_rate) nogil
     void evaporation_snow_wrapper(Grid.DimStruct *dims, Lookup.LookupStruct *LT, double (*lam_fp)(double),
                               double (*L_fp)(double, double), double* density, double* p0, double* temperature,
@@ -61,10 +61,10 @@ cdef extern from "microphysics_arctic_1m.h":
     void melt_snow_wrapper(Grid.DimStruct *dims, double* density, double* temperature, double* qsnow, double* nsnow,
                            double* qsnow_tendency) nogil
     void autoconversion_rain_wrapper(Grid.DimStruct *dims, double* density, double ccn, double* ql, double* qrain,
-                                     double* nrain, double* qrain_tendency) nogil
+                                     double* nrain, double* qrain_tendency, int auto_rain_option) nogil
     void evaporation_rain_wrapper(Grid.DimStruct *dims, Lookup.LookupStruct *LT, double (*lam_fp)(double),
                                   double (*L_fp)(double, double), double* density, double* p0, double* temperature,
-                                  double* qt, double* qrain, double* nrain, double* qrain_tendency) nogil
+                                  double* qt, double* qrain, double* nrain, double* qrain_tendency, int evap_rain_option) nogil
     void get_rain_n0(Grid.DimStruct *dims, double* density, double* qrain, double* nrain) nogil
     void get_snow_n0(Grid.DimStruct *dims, double* density, double* qsnow, double* nsnow) nogil
 
@@ -114,7 +114,14 @@ cdef class Microphysics_Arctic_1M:
         except:
             self.Lambda_fp = lambda_Arctic
             LH.Lambda_fp = lambda_Arctic
-
+        try:
+            self.auto_rain_option = namelist['microphysics']['Arctic_1M']['auto_rain_option']
+        except:
+            self.auto_rain_option = 2
+        try:
+            self.evap_rain_option = namelist['microphysics']['Arctic_1M']['evap_rain_option']
+        except:
+            self.evap_rain_option = 2
 
         LH.L_fp = latent_heat_Arctic
 
@@ -215,7 +222,7 @@ cdef class Microphysics_Arctic_1M:
                              &PV.values[qsnow_shift], &DV.values[nsnow_shift], TS.dt,
                              &qrain_tend_micro[0], &PV.tendencies[qrain_shift],
                              &qsnow_tend_micro[0], &PV.tendencies[qsnow_shift], &self.precip_rate[0], &self.evap_rate[0],
-                             &self.melt_rate[0])
+                             &self.melt_rate[0], self.auto_rain_option, self.evap_rain_option)
 
         sedimentation_velocity_rain(&Gr.dims, &Ref.rho0_half[0], &DV.values[nrain_shift], &PV.values[qrain_shift],
                                      &DV.values[wqrain_shift])
@@ -287,7 +294,7 @@ cdef class Microphysics_Arctic_1M:
         NS.write_profile('melt_rate', tmp[Gr.dims.gw:-Gr.dims.gw], Pa)
 
         autoconversion_rain_wrapper(&Gr.dims, &RS.rho0_half[0], self.ccn, &DV.values[ql_shift], &PV.values[qrain_shift],
-                                     &DV.values[nrain_shift], &dummy[0])
+                                     &DV.values[nrain_shift], &dummy[0], self.auto_rain_option)
         tmp = Pa.HorizontalMean(Gr, &dummy[0])
         NS.write_profile('rain_auto_mass', tmp[Gr.dims.gw:-Gr.dims.gw], Pa)
 
@@ -301,7 +308,7 @@ cdef class Microphysics_Arctic_1M:
         dummy[:] = 0.0
         evaporation_rain_wrapper(&Gr.dims, &self.CC.LT.LookupStructC, self.Lambda_fp, self.L_fp, &RS.rho0_half[0],
                                  &RS.p0_half[0], &DV.values[t_shift], &PV.values[qt_shift], &PV.values[qrain_shift],
-                                 &DV.values[nrain_shift], &dummy[0])
+                                 &DV.values[nrain_shift], &dummy[0], self.evap_rain_option)
         tmp = Pa.HorizontalMean(Gr, &dummy[0])
         NS.write_profile('rain_evap_mass', tmp[Gr.dims.gw:-Gr.dims.gw], Pa)
 
