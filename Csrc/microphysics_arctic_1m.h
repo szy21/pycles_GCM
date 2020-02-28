@@ -280,10 +280,15 @@ void autoconversion_snow(struct LookupStruct *LT, double (*lam_fp)(double), doub
 
 void evaporation_rain(struct LookupStruct *LT, double (*lam_fp)(double), double (*L_fp)(double, double),
                       double density, const double p0, double temperature,
-                      double qt, double qrain, double nrain, double* qrain_tendency){
+                      double qt, double qrain, double nrain, double* qrain_tendency, int option){
     double beta = 2.0;
-    //double pv_star = lookup(LT, temperature);
-    double pv_star  = pv_star_liquid_c(temperature);  
+    double pv_star;
+    if(option==1){
+        pv_star = lookup(LT, temperature);
+    }
+    else{
+        pv_star  = pv_star_liquid_c(temperature);  
+    }
     double qv_star = qv_star_c(p0, qt, pv_star);
     double satratio = qt/qv_star;
     double vapor_diff = vapor_diffusivity(temperature, p0);
@@ -297,9 +302,13 @@ void evaporation_rain(struct LookupStruct *LT, double (*lam_fp)(double), double 
     if( satratio < 1.0 && qrain > 1.0e-15){
         re = rain_diam*rain_vel/VISC_AIR;
         vent = 0.78 + 0.27*sqrt(re);
-        gtherm = 1.0e-7/(2.2*temperature/pv_star + 220.0/temperature);
-        //gtherm = 1.0 / ( (Rv*temperature/vapor_diff/pv_star) + (8.028e12/therm_cond/Rv/(temperature*temperature)) );
-        //gtherm = microphysics_g_arctic(LT, lam_fp, L_fp, temperature, vapor_diff, therm_cond);
+        if(option==1){
+            gtherm = microphysics_g_arctic(LT, lam_fp, L_fp, temperature, vapor_diff, therm_cond);
+        }
+        else{
+            gtherm = 1.0e-7/(2.2*temperature/pv_star + 220.0/temperature);
+            //gtherm = 1.0 / ( (Rv*temperature/vapor_diff/pv_star) + (8.028e12/therm_cond/Rv/(temperature*temperature)) );
+        }
         *qrain_tendency = 4.0*pi/beta*(satratio - 1.0)*vent*gtherm*nrain/(rain_lam*rain_lam)/density;
        // *qrain_tendency = 0.0; 
     }
@@ -454,7 +463,7 @@ void microphysics_sources(const struct DimStruct *dims, struct LookupStruct *LT,
                              double* restrict qsnow, double* restrict nsnow, double dt,
                              double* restrict qrain_tendency_micro, double* restrict qrain_tendency,
                              double* restrict qsnow_tendency_micro, double* restrict qsnow_tendency,
-                             double* restrict precip_rate, double* restrict evap_rate, double* restrict melt_rate, int auto_rain_option){
+                             double* restrict precip_rate, double* restrict evap_rate, double* restrict melt_rate, int auto_rain_option, int evap_rain_option){
 
     const double b1 = 650.1466922699631;
     const double b2 = -1.222222222222222;
@@ -534,7 +543,7 @@ void microphysics_sources(const struct DimStruct *dims, struct LookupStruct *LT,
                                   &ql_tendency_acc, &qi_tendency_acc, &qrain_tendency_acc, &qsnow_tendency_acc);
 
                     evaporation_rain(LT, lam_fp, L_fp, density[k], p0[k], temperature[ijk], qv_tmp, qrain_tmp, nrain[ijk],
-                                     &qrain_tendency_evp);
+                                     &qrain_tendency_evp, evap_rain_option);
                     evaporation_snow(LT, lam_fp, L_fp, density[k], p0[k], temperature[ijk], qv_tmp, qsnow_tmp,
                                      nsnow[ijk], &qsnow_tendency_evp);
                     melt_snow(density[k], temperature[ijk], qsnow_tmp, nsnow[ijk], &qsnow_tendency_melt);
@@ -978,7 +987,7 @@ void autoconversion_rain_wrapper(const struct DimStruct *dims, double* restrict 
 void evaporation_rain_wrapper(const struct DimStruct *dims, struct LookupStruct *LT, double (*lam_fp)(double),
                               double (*L_fp)(double, double), double* restrict density, double* restrict p0,
                               double* restrict temperature, double* restrict qt, double* restrict qrain,
-                              double* restrict nrain, double* restrict qrain_tendency){
+                              double* restrict nrain, double* restrict qrain_tendency, int evap_rain_option){
 
     const ssize_t istride = dims->nlg[1] * dims->nlg[2];
     const ssize_t jstride = dims->nlg[2];
@@ -1000,7 +1009,7 @@ void evaporation_rain_wrapper(const struct DimStruct *dims, struct LookupStruct 
                 double qt_tmp = qt[ijk];
 
                 evaporation_rain(LT, lam_fp, L_fp, density[k], p0[k], temperature[ijk], qt_tmp, qrain_tmp,
-                                 nrain[ijk], &qrain_tendency[ijk]);
+                                 nrain[ijk], &qrain_tendency[ijk], evap_rain_option);
             }
         }
     }

@@ -67,6 +67,7 @@ cdef class Microphysics_Arctic_1M:
         double n0_ice_input
         Py_ssize_t order
         Py_ssize_t auto_rain_option
+        Py_ssize_t evap_rain_option
 
         double (*L_fp)(double T, double Lambda) nogil
         double (*Lambda_fp)(double T) nogil
