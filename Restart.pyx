@@ -204,5 +204,5 @@ cdef class Restart:
             for new_dir in new_dirs:
                 prefix = new_dir[:-4]
                 os.rename(new_dir, prefix)
-            return
+        return
 
