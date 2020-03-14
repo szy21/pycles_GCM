@@ -215,8 +215,11 @@ cdef class SurfaceGCMNew(SurfaceBase):
         double gustiness
         double z0
         double ct
+        double fq
+        double ft
         double rho0
         int site
+        bint fixed_sfc_flux
         bint alt_gustiness
         int t_indx
         str file
