@@ -1446,6 +1446,10 @@ cdef class SurfaceGCMNew(SurfaceBase):
         self.file = str(namelist['gcm']['file'])
         self.site = namelist['gcm']['site']
         try:
+            self.fixed_sfc_flux = namelist['surface']['fixed_sfc_flux']
+        except:
+            self.fixed_sfc_flux = False
+        try:
             self.alt_gustiness = namelist['surface']['alt_gustiness']
         except:
             self.alt_gustiness = True
@@ -1462,6 +1466,8 @@ cdef class SurfaceGCMNew(SurfaceBase):
         rdr = cfreader(self.file, self.site)
 
         self.T_surface = rdr.get_timeseries_mean('ts')
+        self.fq = rdr.get_timeseries_mean('hfls')
+        self.ft = rdr.get_timeseries_mean('hfss')
         return
 
     cpdef update(self, Grid.Grid Gr, ReferenceState.ReferenceState Ref, PrognosticVariables.PrognosticVariables PV,
@@ -1556,25 +1562,17 @@ cdef class SurfaceGCMNew(SurfaceBase):
                         exchange_coefficients_byun(Ri, zb, self.z0, &cm[ij], &ch, &self.obukhov_length[ij])
                         self.s_flux[ij] = -ch *windspeed[ij] * (PV.values[s_shift + ijk] - s_star)
                         self.qt_flux[ij] = -ch *windspeed[ij] *  (PV.values[qt_shift + ijk] - qv_star)
+                        if self.fixed_sfc_flux:
+                            lam = self.Lambda_fp(DV.values[t_shift+ijk])
+                            lv = self.L_fp(DV.values[t_shift+ijk],lam)
+                            pv = pv_c(Ref.p0_half[gw], PV.values[ijk + qt_shift], PV.values[ijk + qt_shift] - DV.values[ijk + ql_shift])
+                            pd = pd_c(Ref.p0_half[gw], PV.values[ijk + qt_shift], PV.values[ijk + qt_shift] - DV.values[ijk + ql_shift])
+                            sv = sv_c(pv,DV.values[t_shift+ijk])
+                            sd = sd_c(pd,DV.values[t_shift+ijk])
+                            self.qt_flux[ij] = self.fq / lv / Ref.rho0_half[gw]
+                            self.s_flux[ij] = Ref.alpha0_half[gw] * (self.ft/DV.values[t_shift+ijk] + self.fq*(sv - sd)/lv) 
                         ustar = sqrt(cm[ij]) * windspeed[ij]
                         self.friction_velocity[ij] = ustar
-        else:
-            thli_shift = PV.get_varshift(Gr, 'thli')
-            with nogil:
-                for i in xrange(gw-1, imax-gw+1):
-                    for j in xrange(gw-1,jmax-gw+1):
-                        ijk = i * istride + j * jstride + gw
-                        ij = i * istride_2d + j
-                        theta_rho_b = DV.values[th_shift + ijk]
-                        Nb2 = g/theta_rho_g*(theta_rho_b-theta_rho_g)/zb
-                        Ri = Nb2 * zb * zb/(windspeed[ij] * windspeed[ij])
-                        exchange_coefficients_byun(Ri, zb, self.z0, &cm[ij], &ch, &self.obukhov_length[ij])
-                        self.thli_flux[ij] = -ch *windspeed[ij] * (PV.values[thli_shift + ijk] - thli_star)
-                        self.qt_flux[ij] = -ch *windspeed[ij] *  (PV.values[qt_shift + ijk] - qv_star)
-                        ustar = sqrt(cm[ij]) * windspeed[ij]
-                        self.friction_velocity[ij] = ustar
-
-
 
 
         with nogil:
