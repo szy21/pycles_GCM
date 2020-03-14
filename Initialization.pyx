@@ -1560,7 +1560,12 @@ def InitGCMNew(namelist, Grid.Grid Gr,PrognosticVariables.PrognosticVariables PV
 
     RS.initialize(Gr, Th, NS, Pa)
 
-    np.random.seed(Pa.rank)
+    try:
+        random_seed_factor = namelist['initialization']['random_seed_factor']
+    except:
+        random_seed_factor = 1
+
+    np.random.seed(Pa.rank * random_seed_factor)
 
     cdef:
         Py_ssize_t u_varshift = PV.get_varshift(Gr,'u')
