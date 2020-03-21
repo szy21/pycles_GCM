@@ -45,7 +45,6 @@ cdef class RayleighGCMMeanNudge:
         double lat
         double lon
 
-
     cpdef initialize(self, Grid.Grid Gr, ReferenceState.ReferenceState RS)
     cpdef update(self, Grid.Grid Gr, ReferenceState.ReferenceState RS, PrognosticVariables.PrognosticVariables PV,
                  DiagnosticVariables.DiagnosticVariables DV, ParallelMPI.ParallelMPI Pa, TimeStepping.TimeStepping TS)
@@ -62,6 +61,7 @@ cdef class RayleighGCMNew:
         double[:] vcomp
         double [:] dt_tg_total
         double [:] dt_qg_total
+        bint griddata
         bint gcm_profiles_initialized
         bint truncate
         bint damp_w
@@ -69,7 +69,8 @@ cdef class RayleighGCMNew:
         int t_indx
         str file
         int site
-
+        double lat
+        double lon
 
     cpdef initialize(self, Grid.Grid Gr, ReferenceState.ReferenceState RS)
     cpdef update(self, Grid.Grid Gr, ReferenceState.ReferenceState RS, PrognosticVariables.PrognosticVariables PV,

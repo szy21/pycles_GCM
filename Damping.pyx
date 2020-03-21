@@ -23,6 +23,7 @@ from scipy.interpolate import pchip
 from thermodynamic_functions cimport cpm_c
 from fms_forcing_reader import reader
 from cfsites_forcing_reader import cfreader
+from cfgrid_forcing_reader import cfreader_grid
 include 'parameters.pxi'
 
 cdef class Damping:
@@ -364,8 +365,15 @@ cdef class RayleighGCMNew:
     def __init__(self, namelist, ParallelMPI.ParallelMPI Pa):
 
         self.file = str(namelist['gcm']['file'])
-        self.site = namelist['gcm']['site']
-
+        try:
+            self.griddata = namelist['gcm']['griddata']
+        except:
+            self.griddata = False
+        if self.griddata:
+            self.lat = namelist['gcm']['lat']
+            self.lon = namelist['gcm']['lon']
+        else:
+            self.site = namelist['gcm']['site']
 
         try:
             self.z_d = namelist['damping']['Rayleigh']['z_d']
@@ -454,8 +462,10 @@ cdef class RayleighGCMNew:
         #input_data_tv = cPickle.load(fh)
         #fh.close()
 
-
-        rdr = cfreader(self.file, self.site)
+        if self.griddata:
+            rdr = cfreader_grid(self.file, self.lat, self.lon)
+        else:
+            rdr = cfreader(self.file, self.site)
 
         #Compute height for damping profiles
         #dt_qg_conv = np.mean(input_data_tv['dt_qg_param'][:,::-1],axis=0)

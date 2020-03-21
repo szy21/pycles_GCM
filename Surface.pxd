@@ -223,6 +223,9 @@ cdef class SurfaceGCMNew(SurfaceBase):
         bint alt_gustiness
         int t_indx
         str file
+        bint griddata
+        double lat
+        double lon
         bint gcm_profiles_initialized
 
     cpdef initialize(self, Grid.Grid Gr, ReferenceState.ReferenceState Ref, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa)

@@ -61,9 +61,11 @@ cdef class ForcingGCMMean:
 
 cdef class ForcingGCMNew:
     cdef:
+        bint griddata
         bint gcm_profiles_initialized
         int t_indx
         double lat
+        double lon
         double coriolis_param
         double [:] temp
         double [:] sphum

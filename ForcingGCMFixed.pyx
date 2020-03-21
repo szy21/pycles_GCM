@@ -24,6 +24,7 @@ from scipy.interpolate import pchip
 
 from fms_forcing_reader import reader
 from cfsites_forcing_reader import cfreader
+from cfgrid_forcing_reader import cfreader_grid
 
 #import pylab as plt
 include 'parameters.pxi'
@@ -430,7 +431,15 @@ cdef class ForcingGCMMean:
 cdef class ForcingGCMNew:
     def __init__(self, namelist, LatentHeat LH, ParallelMPI.ParallelMPI Pa):
         self.file = str(namelist['gcm']['file'])
-        self.site = namelist['gcm']['site']
+        try:
+            self.griddata = namelist['gcm']['griddata']
+        except:
+            self.griddata = False
+        if self.griddata:
+            self.lat = namelist['gcm']['lat']
+            self.lon = namelist['gcm']['lon']
+        else:
+            self.site = namelist['gcm']['site']
         try:
             self.relax_scalar = namelist['forcing']['relax_scalar']
         except:
@@ -572,8 +581,11 @@ cdef class ForcingGCMNew:
             self.gcm_profiles_initialized = True
             Pa.root_print('Updating forcing')
 
-            rdr = cfreader(self.file, self.site)
-            self.lat = rdr.get_value('lat')
+            if self.griddata:
+                rdr = cfreader_grid(self.file, self.lat, self.lon)
+            else:
+                rdr = cfreader(self.file, self.site)
+                self.lat = rdr.get_value('lat')
             Pa.root_print(self.lat)
             self.coriolis_param = 2.0 * omega * sin(self.lat * pi / 180.0)
             self.temp = rdr.get_interp_profile_old('ta', Gr.zp_half)

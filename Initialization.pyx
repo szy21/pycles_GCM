@@ -25,6 +25,7 @@ import cPickle
 from scipy import interpolate
 from fms_forcing_reader import reader
 from cfsites_forcing_reader import cfreader
+from cfgrid_forcing_reader import cfreader_grid
 
 def InitializationFactory(namelist):
 
@@ -1460,7 +1461,7 @@ def InitGCMMean(namelist, Grid.Grid Gr,PrognosticVariables.PrognosticVariables P
     #fh.close()
 
 
-    rdr = cfreader(data_path, lat, lon)
+    rdr = reader(data_path, lat, lon)
 
 
 
@@ -1536,20 +1537,25 @@ def InitGCMMean(namelist, Grid.Grid Gr,PrognosticVariables.PrognosticVariables P
 def InitGCMNew(namelist, Grid.Grid Gr,PrognosticVariables.PrognosticVariables PV,
                        ReferenceState.ReferenceState RS, Th, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa , LatentHeat LH):
 
-
-
-
     #Generate the reference profiles
     data_path = namelist['gcm']['file']
-    site = namelist['gcm']['site']
+    try:
+        griddata = namelist['gcm']['griddata']
+    except:
+        griddata = False
+    if griddata:
+        lat = namelist['gcm']['lat']
+        lon = namelist['gcm']['lon']
+    else:
+        site = namelist['gcm']['site']
     #fh = open(data_path, 'r')
     #input_data_tv = cPickle.load(fh)
     #fh.close()
 
-
-    rdr = cfreader(data_path, site)
-
-
+    if griddata:
+        rdr = cfreader_grid(data_path, lat, lon)
+    else:
+        rdr = cfreader(data_path, site)
 
     RS.Pg = rdr.get_timeseries_mean('ps')
     RS.Tg = rdr.get_timeseries_mean('ts')
