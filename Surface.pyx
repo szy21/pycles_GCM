@@ -26,9 +26,9 @@ include "parameters.pxi"
 
 from fms_forcing_reader import reader
 from cfsites_forcing_reader import cfreader
+from cfgrid_forcing_reader import cfreader_grid
 
 import cython
-
 
 
 cdef extern from "advection_interpolation.h":
@@ -1444,7 +1444,15 @@ cdef class SurfaceGCMNew(SurfaceBase):
         self.CC.initialize(namelist, LH, Pa)
 
         self.file = str(namelist['gcm']['file'])
-        self.site = namelist['gcm']['site']
+        try:
+            self.griddata = namelist['gcm']['griddata']
+        except:
+            self.griddata = False
+        if self.griddata:
+            self.lat = namelist['gcm']['lat']
+            self.lon = namelist['gcm']['lon']
+        else:
+            self.site = namelist['gcm']['site']
         try:
             self.fixed_sfc_flux = namelist['surface']['fixed_sfc_flux']
         except:
@@ -1462,8 +1470,11 @@ cdef class SurfaceGCMNew(SurfaceBase):
     cpdef initialize(self, Grid.Grid Gr, ReferenceState.ReferenceState Ref, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa):
 
         SurfaceBase.initialize(self, Gr, Ref, NS, Pa)
-
-        rdr = cfreader(self.file, self.site)
+        
+        if self.griddata:
+            rdr = cfreader_grid(self.file, self.lat, self.lon)
+        else:
+            rdr = cfreader(self.file, self.site)
 
         self.T_surface = rdr.get_timeseries_mean('ts')
         self.fq = rdr.get_timeseries_mean('hfls')

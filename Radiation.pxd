@@ -95,8 +95,11 @@ cdef class RadiationRRTM(RadiationBase):
         str profile_name
         str file
         bint modified_adiabat
+        bint griddata
         bint read_file
         int site
+        double lat
+        double lon
         AdjustedMoistAdiabat reference_profile
         double Tg_adiabat
         double Pg_adiabat

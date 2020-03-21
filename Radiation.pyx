@@ -32,6 +32,7 @@ import cython
 
 from fms_forcing_reader import reader
 from cfsites_forcing_reader import cfreader
+from cfgrid_forcing_reader import cfreader_grid
 
 
 def RadiationFactory(namelist, LatentHeat LH, ParallelMPI.ParallelMPI Pa):
@@ -557,7 +558,15 @@ cdef class RadiationRRTM(RadiationBase):
         elif casename == 'GCMNew':
             self.read_file = True
             self.file = str(namelist['gcm']['file'])
-            self.site = namelist['gcm']['site']
+            try:
+                self.griddata = namelist['gcm']['griddata']
+            except:
+                self.griddata = False
+            if self.griddata:
+                self.lat = namelist['gcm']['lat']
+                self.lon = namelist['gcm']['lon']
+            else:
+                self.site = namelist['gcm']['site']
         else:
             Pa.root_print('RadiationRRTM: Case ' + casename + ' has no known extension profile')
             Pa.kill()
@@ -610,7 +619,10 @@ cdef class RadiationRRTM(RadiationBase):
             Pa.root_print('TOA shortwave not set so RadiationRRTM takes default value: toa_sw = 420.0 .')
             self.toa_sw = 420.0
         if self.read_file:
-            rdr = cfreader(self.file, self.site)
+            if self.griddata:
+               rdr = cfreader_grid(self.file, self.lat, self.lon)
+            else:
+               rdr = cfreader(self.file, self.site)
             self.toa_sw = rdr.get_timeseries_mean('rsdt')
 
         try:
@@ -718,7 +730,10 @@ cdef class RadiationRRTM(RadiationBase):
             temperatures =np.array( self.reference_profile.temperature)
             vapor_mixing_ratios = np.array(self.reference_profile.rv)
         elif self.read_file:
-            rdr = cfreader(self.file, self.site)
+            if self.griddata:
+                rdr = cfreader_grid(self.file, self.lat, self.lon)
+            else:
+                rdr = cfreader(self.file, self.site)
             pressures = rdr.get_profile_mean('pfull')
             temperatures = rdr.get_profile_mean('ta')
             vapor_mixing_ratios = rdr.get_profile_mean('hus')
