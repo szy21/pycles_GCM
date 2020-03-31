@@ -158,6 +158,7 @@ cdef class RadiationRRTM(RadiationBase):
         double [:] cfc22vmr
         double [:] ccl4vmr
         bint uniform_reliq
+        bint clear_sky
 
 
     cpdef initialize(self, Grid.Grid Gr, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa)

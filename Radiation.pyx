@@ -650,6 +650,11 @@ cdef class RadiationRRTM(RadiationBase):
             Pa.root_print('Surface direct albedo not set so RadiationRRTM computes value: adif = %5.4f .'%(self.adir))
 
         try:
+            self.clear_sky = namelist['radiation']['RRTM']['clear_sky']
+        except:
+            self.clear_sky = False
+
+        try:
             self.uniform_reliq = namelist['radiation']['RRTM']['uniform_reliq']
         except:
             Pa.root_print('uniform_reliq not set so RadiationRRTM takes default value: uniform_reliq = False.')
@@ -1134,7 +1139,7 @@ cdef class RadiationRRTM(RadiationBase):
         cdef:
             int ncol = n_pencils
             int nlay = nz_full
-            int icld = 1
+            int icld
             int idrv = 0
             int iaer = 0
             int inflglw = 2
@@ -1143,6 +1148,11 @@ cdef class RadiationRRTM(RadiationBase):
             int inflgsw = 2
             int iceflgsw = 3
             int liqflgsw = 1
+        
+        if self.clear_sky:
+            icld = 0
+        else:
+            icld = 1
 
         c_rrtmg_lw (
              &ncol    ,&nlay    ,&icld    ,&idrv,
