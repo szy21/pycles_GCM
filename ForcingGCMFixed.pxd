@@ -86,6 +86,7 @@ cdef class ForcingGCMNew:
         bint add_vert_fluctuation
         bint add_subsidence
         bint add_subsidence_wind
+        double variance_factor
         bint add_coriolis
         bint add_ls_pgradient
         double [:] qt_tend_nudge
@@ -96,8 +97,11 @@ cdef class ForcingGCMNew:
         double [:] t_tend_adv
         double [:] s_tend_adv
         double [:] qt_tend_hadv
+        double [:] qt_tend_hadv_tr
         double [:] t_tend_hadv
+        double [:] t_tend_hadv_tr
         double [:] s_tend_hadv
+        double [:] s_tend_hadv_tr
         double [:] qt_tend_fluc
         double [:] t_tend_fluc
         double [:] omega_vv
