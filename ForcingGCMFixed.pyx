@@ -58,7 +58,6 @@ cdef class ForcingGCMMean:
 
         NS.add_profile('ls_subsidence', Gr, Pa)
         NS.add_profile('ls_dtdt_hadv', Gr, Pa)
-        NS.add_profile('ls_dtdt_hadv_tr', Gr, Pa)
         NS.add_profile('ls_dtdt_fino', Gr, Pa)
         NS.add_profile('ls_dtdt_resid', Gr, Pa)
         NS.add_profile('ls_dtdt_fluc', Gr, Pa)
