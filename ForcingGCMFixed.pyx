@@ -57,6 +57,7 @@ cdef class ForcingGCMMean:
         self.t_tend_nudge = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
 
         NS.add_profile('ls_subsidence', Gr, Pa)
+        NS.add_profile('ls_subsidence_tr', Gr, Pa)
         NS.add_profile('ls_dtdt_hadv', Gr, Pa)
         NS.add_profile('ls_dtdt_fino', Gr, Pa)
         NS.add_profile('ls_dtdt_resid', Gr, Pa)
@@ -495,9 +496,13 @@ cdef class ForcingGCMNew:
             Pa.root_print('ForcingGCMNew: Cannot specify horizontal advection or vertical fluctuation when add_horiz_adv_vert_fluc is set to True')
             Pa.kill()
         try:
-            self.variance_factor = namelist['forcing']['variance_factor']
+            self.hadv_variance_factor = namelist['forcing']['hadv_variance_factor']
         except:
-            self.variance_factor = 0.0
+            self.hadv_variance_factor = 0.0
+        try:
+            self.sub_variance_factor = namelist['forcing']['sub_variance_factor']
+        except:
+            self.sub_variance_factor = 0.0
         try:
             self.add_coriolis = namelist['forcing']['add_coriolis']
         except:
@@ -529,10 +534,12 @@ cdef class ForcingGCMNew:
         self.s_tend_hadv = np.zeros(Gr.dims.npg,dtype=np.double,order='c')
         self.s_tend_hadv_tr = np.zeros(Gr.dims.npg,dtype=np.double,order='c')
         self.subsidence = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
+        self.subsidence_tr = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
         self.ug = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
         self.vg = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
 
         NS.add_profile('ls_subsidence', Gr, Pa)
+        NS.add_profile('ls_subsidence_tr', Gr, Pa)
         NS.add_profile('dqtdt_nudge', Gr, Pa)
         NS.add_profile('dtdt_nudge', Gr, Pa)
         NS.add_profile('dudt_nudge', Gr, Pa)
@@ -549,9 +556,13 @@ cdef class ForcingGCMNew:
         NS.add_profile('dqtdt_fluc', Gr, Pa)
         NS.add_profile('dtdt_fluc', Gr, Pa)
         NS.add_profile('dqtdt_sub', Gr, Pa)
+        NS.add_profile('dqtdt_sub_tr', Gr, Pa)
         NS.add_profile('dtdt_sub', Gr, Pa)
+        NS.add_profile('dtdt_sub_tr', Gr, Pa)
         NS.add_profile('dudt_sub', Gr, Pa)
+        NS.add_profile('dudt_sub_tr', Gr, Pa)
         NS.add_profile('dvdt_sub', Gr, Pa)
+        NS.add_profile('dvdt_sub_tr', Gr, Pa)
         NS.add_profile('dudt_cor', Gr, Pa)
         NS.add_profile('dvdt_cor', Gr, Pa)
 
@@ -651,13 +662,20 @@ cdef class ForcingGCMNew:
         if self.add_coriolis:
             coriolis_force(&Gr.dims, &PV.values[u_shift], &PV.values[v_shift], &PV.tendencies[u_shift],
                            &PV.tendencies[v_shift], &self.ug[0], &self.vg[0], self.coriolis_param, Ref.u0, Ref.v0)
+       
+        for k in xrange(Gr.dims.nlg[2]):
+            self.subsidence_tr[k] = np.random.normal(0.0, self.sub_variance_factor*np.abs(self.subsidence[k]))
         # Apply subsidence
         if self.add_subsidence:
             apply_subsidence(&Gr.dims, &Ref.rho0[0], &Ref.rho0_half[0], &self.subsidence[0], &PV.values[s_shift], &PV.tendencies[s_shift])
+            apply_subsidence(&Gr.dims, &Ref.rho0[0], &Ref.rho0_half[0], &self.subsidence_tr[0], &PV.values[s_shift], &PV.tendencies[s_shift])
             apply_subsidence(&Gr.dims, &Ref.rho0[0], &Ref.rho0_half[0], &self.subsidence[0], &PV.values[qt_shift], &PV.tendencies[qt_shift])
+            apply_subsidence(&Gr.dims, &Ref.rho0[0], &Ref.rho0_half[0], &self.subsidence_tr[0], &PV.values[qt_shift], &PV.tendencies[qt_shift])
         if self.add_subsidence_wind:
             apply_subsidence(&Gr.dims, &Ref.rho0[0], &Ref.rho0_half[0], &self.subsidence[0], &PV.values[u_shift], &PV.tendencies[u_shift])
+            apply_subsidence(&Gr.dims, &Ref.rho0[0], &Ref.rho0_half[0], &self.subsidence_tr[0], &PV.values[u_shift], &PV.tendencies[u_shift])
             apply_subsidence(&Gr.dims, &Ref.rho0[0], &Ref.rho0_half[0], &self.subsidence[0], &PV.values[v_shift], &PV.tendencies[v_shift])
+            apply_subsidence(&Gr.dims, &Ref.rho0[0], &Ref.rho0_half[0], &self.subsidence_tr[0], &PV.values[v_shift], &PV.tendencies[v_shift])
         # Relaxation
         cdef double [:] xi_relax_scalar = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
         cdef double [:] xi_relax_wind = np.zeros(Gr.dims.nlg[2],dtype=np.double,order='c')
@@ -686,8 +704,8 @@ cdef class ForcingGCMNew:
         # Stochastic forcing
         
         for k in xrange(Gr.dims.nlg[2]):
-            self.qt_tend_hadv_tr[k] = np.random.normal(0.0, self.variance_factor*np.abs(self.qt_tend_hadv[k]))
-            self.t_tend_hadv_tr[k] = np.random.normal(0.0, self.variance_factor*np.abs(self.t_tend_hadv[k]))
+            self.qt_tend_hadv_tr[k] = np.random.normal(0.0, self.hadv_variance_factor*np.abs(self.qt_tend_hadv[k]))
+            self.t_tend_hadv_tr[k] = np.random.normal(0.0, self.hadv_variance_factor*np.abs(self.t_tend_hadv[k]))
 
         cdef double total_t_source, total_qt_source
 
@@ -762,11 +780,24 @@ cdef class ForcingGCMNew:
         NS.write_profile('dqtdt_sub', mean_tendency[Gr.dims.gw:-Gr.dims.gw], Pa)
         tmp_tendency[:] = 0.0
         if self.add_subsidence:
+            apply_subsidence(&Gr.dims,&Ref.rho0[0],&Ref.rho0_half[0],&self.subsidence_tr[0], &PV.values[qt_shift],
+                             &tmp_tendency[0])
+        mean_tendency = Pa.HorizontalMean(Gr,&tmp_tendency[0])
+        NS.write_profile('dqtdt_sub_tr', mean_tendency[Gr.dims.gw:-Gr.dims.gw], Pa)
+        tmp_tendency[:] = 0.0
+        if self.add_subsidence:
             apply_subsidence(&Gr.dims,&Ref.rho0[0],&Ref.rho0_half[0],&self.subsidence[0], &DV.values[t_shift],
                              &tmp_tendency[0])
         mean_tendency = Pa.HorizontalMean(Gr,&tmp_tendency[0])
         NS.write_profile('dtdt_sub', mean_tendency[Gr.dims.gw:-Gr.dims.gw], Pa)
         tmp_tendency[:] = 0.0
+        if self.add_subsidence:
+            apply_subsidence(&Gr.dims,&Ref.rho0[0],&Ref.rho0_half[0],&self.subsidence_tr[0], &DV.values[t_shift],
+                             &tmp_tendency[0])
+        mean_tendency = Pa.HorizontalMean(Gr,&tmp_tendency[0])
+        NS.write_profile('dtdt_sub_tr', mean_tendency[Gr.dims.gw:-Gr.dims.gw], Pa)
+        tmp_tendency[:] = 0.0
+
         if self.add_subsidence_wind:
             apply_subsidence(&Gr.dims,&Ref.rho0[0],&Ref.rho0_half[0],&self.subsidence[0], &PV.values[u_shift],
                              &tmp_tendency[0])
@@ -774,12 +805,25 @@ cdef class ForcingGCMNew:
         NS.write_profile('dudt_sub', mean_tendency[Gr.dims.gw:-Gr.dims.gw], Pa)
         tmp_tendency[:] = 0.0
         if self.add_subsidence_wind:
+            apply_subsidence(&Gr.dims,&Ref.rho0[0],&Ref.rho0_half[0],&self.subsidence_tr[0], &PV.values[u_shift],
+                             &tmp_tendency[0])
+        mean_tendency = Pa.HorizontalMean(Gr,&tmp_tendency[0])
+        NS.write_profile('dudt_sub_tr', mean_tendency[Gr.dims.gw:-Gr.dims.gw], Pa)
+        tmp_tendency[:] = 0.0
+        if self.add_subsidence_wind:
             apply_subsidence(&Gr.dims,&Ref.rho0[0],&Ref.rho0_half[0],&self.subsidence[0], &PV.values[v_shift],
                              &tmp_tendency[0])
         mean_tendency = Pa.HorizontalMean(Gr,&tmp_tendency[0])
         NS.write_profile('dvdt_sub', mean_tendency[Gr.dims.gw:-Gr.dims.gw], Pa)
+        tmp_tendency[:] = 0.0
+        if self.add_subsidence_wind:
+            apply_subsidence(&Gr.dims,&Ref.rho0[0],&Ref.rho0_half[0],&self.subsidence_tr[0], &PV.values[v_shift],
+                             &tmp_tendency[0])
+        mean_tendency = Pa.HorizontalMean(Gr,&tmp_tendency[0])
+        NS.write_profile('dvdt_sub_tr', mean_tendency[Gr.dims.gw:-Gr.dims.gw], Pa)
         
         NS.write_profile('ls_subsidence', self.subsidence[Gr.dims.gw:-Gr.dims.gw],Pa)
+        NS.write_profile('ls_subsidence_tr', self.subsidence_tr[Gr.dims.gw:-Gr.dims.gw],Pa)
         NS.write_profile('dqtdt_nudge', self.qt_tend_nudge[Gr.dims.gw:-Gr.dims.gw], Pa)
         NS.write_profile('dtdt_nudge', self.t_tend_nudge[Gr.dims.gw:-Gr.dims.gw], Pa)
         NS.write_profile('dudt_nudge', self.u_tend_nudge[Gr.dims.gw:-Gr.dims.gw], Pa)
