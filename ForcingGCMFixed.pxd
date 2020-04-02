@@ -86,7 +86,8 @@ cdef class ForcingGCMNew:
         bint add_vert_fluctuation
         bint add_subsidence
         bint add_subsidence_wind
-        double variance_factor
+        double hadv_variance_factor
+        double sub_variance_factor
         bint add_coriolis
         bint add_ls_pgradient
         double [:] qt_tend_nudge
@@ -106,6 +107,7 @@ cdef class ForcingGCMNew:
         double [:] t_tend_fluc
         double [:] omega_vv
         double [:] subsidence
+        double [:] subsidence_tr
         str file
         int site
     cpdef initialize(self, Grid.Grid Gr,ReferenceState.ReferenceState Ref, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa)
