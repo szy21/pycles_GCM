@@ -496,6 +496,10 @@ cdef class ForcingGCMNew:
             Pa.root_print('ForcingGCMNew: Cannot specify horizontal advection or vertical fluctuation when add_horiz_adv_vert_fluc is set to True')
             Pa.kill()
         try:
+            self.coherent_variance = namelist['forcing']['coherent_variance']
+        except:
+            self.coherent_variance = True
+        try:
             self.instant_variance = namelist['forcing']['instant_variance']
         except:
             self.instant_variance = False
@@ -597,6 +601,7 @@ cdef class ForcingGCMNew:
             double pd, pv, qt, qv, p0, rho0, t
             double zmax, weight, weight_half
             double u0_new, v0_new
+            double sub_factor, hadv_factor
             double [:] qt_mean = Pa.HorizontalMean(Gr, &PV.values[qt_shift])
             double [:] t_mean = Pa.HorizontalMean(Gr, &DV.values[t_shift])
             double [:] u_mean = Pa.HorizontalMean(Gr, &PV.values[u_shift])
@@ -664,17 +669,33 @@ cdef class ForcingGCMNew:
         if int(TS.t // (3600.0 * 6.0)) > self.t_indx and (not self.instant_variance):
             self.t_indx = int(TS.t // (3600.0 * 6.0))
             Pa.root_print('Add stochastic forcing') 
-            for k in xrange(Gr.dims.nlg[2]):
-                self.subsidence_tr[k] = np.random.normal(0.0, self.sub_variance_factor*np.abs(self.subsidence[k]))
-                self.qt_tend_hadv_tr[k] = np.random.normal(0.0, self.hadv_variance_factor*np.abs(self.qt_tend_hadv[k]))
-                self.t_tend_hadv_tr[k] = np.random.normal(0.0, self.hadv_variance_factor*np.abs(self.t_tend_hadv[k]))
+            if self.coherent_variance:
+                sub_factor = np.random.normal(0.0, self.sub_variance_factor)
+                hadv_factor = np.random.normal(0.0, self.hadv_variance_factor)       
+                for k in xrange(Gr.dims.nlg[2]):
+                    self.subsidence_tr[k] = sub_factor*self.subsidence[k]
+                    self.qt_tend_hadv_tr[k] = hadv_factor*self.qt_tend_hadv[k]
+                    self.t_tend_hadv_tr[k] = hadv_factor*self.t_tend_hadv[k]
+            else:
+                for k in xrange(Gr.dims.nlg[2]):
+                    self.subsidence_tr[k] = np.random.normal(0.0, self.sub_variance_factor*np.abs(self.subsidence[k]))
+                    self.qt_tend_hadv_tr[k] = np.random.normal(0.0, self.hadv_variance_factor*np.abs(self.qt_tend_hadv[k]))
+                    self.t_tend_hadv_tr[k] = np.random.normal(0.0, self.hadv_variance_factor*np.abs(self.t_tend_hadv[k]))
      
         # stochastic forcing
         if self.instant_variance:
-            for k in xrange(Gr.dims.nlg[2]):
-                self.subsidence_tr[k] = np.random.normal(0.0, self.sub_variance_factor*np.abs(self.subsidence[k]))
-                self.qt_tend_hadv_tr[k] = np.random.normal(0.0, self.hadv_variance_factor*np.abs(self.qt_tend_hadv[k]))
-                self.t_tend_hadv_tr[k] = np.random.normal(0.0, self.hadv_variance_factor*np.abs(self.t_tend_hadv[k]))
+            if self.coherent_variance:
+                sub_factor = np.random.normal(0.0, self.sub_variance_factor)
+                hadv_factor = np.random.normal(0.0, self.hadv_variance_factor)       
+                for k in xrange(Gr.dims.nlg[2]):
+                    self.subsidence_tr[k] = sub_factor*self.subsidence[k]
+                    self.qt_tend_hadv_tr[k] = hadv_factor*self.qt_tend_hadv[k]
+                    self.t_tend_hadv_tr[k] = hadv_factor*self.t_tend_hadv[k]
+            else:
+                for k in xrange(Gr.dims.nlg[2]):
+                    self.subsidence_tr[k] = np.random.normal(0.0, self.sub_variance_factor*np.abs(self.subsidence[k]))
+                    self.qt_tend_hadv_tr[k] = np.random.normal(0.0, self.hadv_variance_factor*np.abs(self.qt_tend_hadv[k]))
+                    self.t_tend_hadv_tr[k] = np.random.normal(0.0, self.hadv_variance_factor*np.abs(self.t_tend_hadv[k]))
 
         # Apply Coriolis forcing
         if self.add_coriolis:

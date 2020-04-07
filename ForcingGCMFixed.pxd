@@ -87,6 +87,7 @@ cdef class ForcingGCMNew:
         bint add_subsidence
         bint add_subsidence_wind
         bint instant_variance
+        bint coherent_variance
         double hadv_variance_factor
         double sub_variance_factor
         bint add_coriolis
