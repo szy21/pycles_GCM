@@ -618,12 +618,6 @@ cdef class RadiationRRTM(RadiationBase):
         except:
             Pa.root_print('TOA shortwave not set so RadiationRRTM takes default value: toa_sw = 420.0 .')
             self.toa_sw = 420.0
-        if self.read_file:
-            if self.griddata:
-               rdr = cfreader_grid(self.file, self.lat, self.lon)
-            else:
-               rdr = cfreader(self.file, self.site)
-            self.toa_sw = rdr.get_timeseries_mean('rsdt')
 
         try:
             self.coszen = namelist['radiation']['RRTM']['coszen']
@@ -633,6 +627,15 @@ cdef class RadiationRRTM(RadiationBase):
             else:
                 Pa.root_print('Mean Daytime cos(SZA) not set so RadiationRRTM takes default value: coszen = 2.0/pi .')
                 self.coszen = 2.0/pi
+
+        if self.read_file:
+            if self.griddata:
+               rdr = cfreader_grid(self.file, self.lat, self.lon)
+            else:
+               rdr = cfreader(self.file, self.site)
+            self.toa_sw = rdr.get_timeseries_mean('rsdt')
+            self.coszen = rdr.get_value('coszen')
+            self.adjes = self.toa_sw / (self.scon * self.coszen)
 
         try:
             self.adif = namelist['radiation']['RRTM']['adif']
