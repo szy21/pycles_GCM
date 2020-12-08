@@ -1465,6 +1465,10 @@ cdef class SurfaceGCMNew(SurfaceBase):
             self.gustiness = namelist['surface']['gustiness']
         except:
             self.gustiness = 0.001
+        try:
+            self.read_gustiness = namelist['surface']['read_gustiness']
+        except:
+            self.read_gustiness = False
         return
 
     cpdef initialize(self, Grid.Grid Gr, ReferenceState.ReferenceState Ref, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa):
@@ -1479,6 +1483,8 @@ cdef class SurfaceGCMNew(SurfaceBase):
         self.T_surface = rdr.get_timeseries_mean('ts')
         self.fq = rdr.get_timeseries_mean('hfls')
         self.ft = rdr.get_timeseries_mean('hfss')
+        if self.read_gustiness:
+            self.gustiness = rdr.get_value('gustiness')
         return
 
     cpdef update(self, Grid.Grid Gr, ReferenceState.ReferenceState Ref, PrognosticVariables.PrognosticVariables PV,

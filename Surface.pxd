@@ -221,6 +221,7 @@ cdef class SurfaceGCMNew(SurfaceBase):
         int site
         bint fixed_sfc_flux
         bint alt_gustiness
+        bint read_gustiness
         int t_indx
         str file
         bint griddata
