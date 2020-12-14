@@ -1454,6 +1454,14 @@ cdef class SurfaceGCMNew(SurfaceBase):
         else:
             self.site = namelist['gcm']['site']
         try:
+            self.instant_forcing = namelist['gcm']['instant_forcing']
+        except:
+            self.instant_forcing = False
+        try:
+            self.gcm_tidx = namelist['gcm']['gcm_tidx']
+        except:
+            self.gcm_tidx = 0
+        try:
             self.fixed_sfc_flux = namelist['surface']['fixed_sfc_flux']
         except:
             self.fixed_sfc_flux = False
@@ -1484,9 +1492,9 @@ cdef class SurfaceGCMNew(SurfaceBase):
         else:
             rdr = cfreader(self.file, self.site)
 
-        self.T_surface = rdr.get_timeseries_mean('ts')
-        self.fq = rdr.get_timeseries_mean('hfls')
-        self.ft = rdr.get_timeseries_mean('hfss')
+        self.T_surface = rdr.get_timeseries_mean('ts', instant=self.instant_forcing, t_idx=self.gcm_tidx)
+        self.fq = rdr.get_timeseries_mean('hfls', instant=self.instant_forcing, t_idx=self.gcm_tidx)
+        self.ft = rdr.get_timeseries_mean('hfss', instant=self.instant_forcing, t_idx=self.gcm_tidx)
         if self.read_gustiness:
             self.gustiness = rdr.get_value('gustiness')
         self.scaled_gustiness = self.gustiness * self.gustiness_factor

@@ -39,15 +39,18 @@ class cfreader:
         return
 
 
-    def get_profile_mean(self, var, zero_bottom=False):
+    def get_profile_mean(self, var, zero_bottom=False, instant=False, t_idx=0):
 
         rt_grp = nc.Dataset(self.file, 'r')
 
         op_grp = rt_grp[self.op_grp]
         var_handle = op_grp.variables[var]
         assert (('time','lev') == var_handle.dimensions or ('lev',) == var_handle.dimensions)
-
-        data = np.mean(var_handle[:, :], axis=0)
+        
+	if instant:
+            data = var_handle[t_idx, :]
+        else:
+            data = np.mean(var_handle[:, :], axis=0)
         rt_grp.close()
         #print var, data 
         if zero_bottom:
@@ -55,22 +58,25 @@ class cfreader:
         else:
             return np.append(data, data[-1])[:-1]
 
-    def get_timeseries_mean(self, var):
+    def get_timeseries_mean(self, var, instant=False, t_idx=0):
 
         rt_grp = nc.Dataset(self.file, 'r')
         op_grp = rt_grp[self.op_grp]
 
         var_handle =  op_grp.variables[var]
         assert(('time',) == var_handle.dimensions)
-
-        data = var_handle[:]
+        
+	if instant:
+            data = var_handle[t_idx]
+        else:
+            data = np.mean(var_handle[:], axis=0)
 
         rt_grp.close()
 
-        return np.mean(data, axis=0)
+        return data
 
 
-    def get_interp_profile(self, var, z, zero_bottom=False, filter=True):
+    def get_interp_profile(self, var, z, zero_bottom=False, filter=True, instant=False, t_idx=0):
         '''
         
         :param var: name of variable in fms data
@@ -79,8 +85,8 @@ class cfreader:
         :return: array of var interpolated onto z
         '''
 
-        data = self.get_profile_mean(var, zero_bottom)
-        z_gcm = self.get_profile_mean('zg', zero_bottom=True)
+        data = self.get_profile_mean(var, zero_bottom, instant=instant, t_idx=t_idx)
+        z_gcm = self.get_profile_mean('zg', zero_bottom=True, instant=instant, t_idx=t_idx)
 
         yn, dir_loc = mdi_interp(z_gcm, data, z) 
 
@@ -89,7 +95,7 @@ class cfreader:
 
 
 
-    def get_interp_profile_old(self, var, z, zero_bottom=False, filter=False):
+    def get_interp_profile_old(self, var, z, zero_bottom=False, filter=False, instant=False, t_idx=0):
         '''
 
         :param var: name of variable in fms data
@@ -98,8 +104,8 @@ class cfreader:
         :return: array of var interpolated onto z
         '''
 
-        data = self.get_profile_mean(var, zero_bottom)
-        z_gcm = self.get_profile_mean('zg', zero_bottom=True)
+        data = self.get_profile_mean(var, zero_bottom, instant=instant, t_idx=t_idx)
+        z_gcm = self.get_profile_mean('zg', zero_bottom=True, instant=instant, t_idx=t_idx)
         #print data 
         #print z_gcm 
         p_interp1= pchip(z_gcm[:].filled(), data[:].filled())#np.interp(z, z_gcm[:], data[:])
