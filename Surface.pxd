@@ -213,6 +213,8 @@ cdef class SurfaceGCMNew(SurfaceBase):
     cdef:
         ClausiusClapeyron CC
         double gustiness
+        double gustiness_factor
+        double scaled_gustiness
         double z0
         double ct
         double fq

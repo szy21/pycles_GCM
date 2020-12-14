@@ -1466,6 +1466,10 @@ cdef class SurfaceGCMNew(SurfaceBase):
         except:
             self.gustiness = 0.001
         try:
+            self.gustiness_factor = namelist['surface']['gustiness_factor']
+        except:
+            self.gustiness_factor = 1.0
+        try:
             self.read_gustiness = namelist['surface']['read_gustiness']
         except:
             self.read_gustiness = False
@@ -1485,6 +1489,7 @@ cdef class SurfaceGCMNew(SurfaceBase):
         self.ft = rdr.get_timeseries_mean('hfss')
         if self.read_gustiness:
             self.gustiness = rdr.get_value('gustiness')
+        self.scaled_gustiness = self.gustiness * self.gustiness_factor
         return
 
     cpdef update(self, Grid.Grid Gr, ReferenceState.ReferenceState Ref, PrognosticVariables.PrognosticVariables PV,
@@ -1531,9 +1536,9 @@ cdef class SurfaceGCMNew(SurfaceBase):
 
         #self.gustiness = 0.00001
         if self.alt_gustiness:
-            compute_windspeed(&Gr.dims, &PV.values[u_shift], &PV.values[v_shift], &windspeed[0], Ref.u0, Ref.v0, self.gustiness)
+            compute_windspeed(&Gr.dims, &PV.values[u_shift], &PV.values[v_shift], &windspeed[0], Ref.u0, Ref.v0, self.scaled_gustiness)
         else:
-            compute_windspeed_gust(&Gr.dims, &PV.values[u_shift], &PV.values[v_shift], &windspeed[0], Ref.u0, Ref.v0, self.gustiness)
+            compute_windspeed_gust(&Gr.dims, &PV.values[u_shift], &PV.values[v_shift], &windspeed[0], Ref.u0, Ref.v0, self.scaled_gustiness)
 
 
         cdef:
