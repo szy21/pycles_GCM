@@ -1437,13 +1437,16 @@ cdef class SurfaceGCMNew(SurfaceBase):
     def __init__(self, namelist, LatentHeat LH, ParallelMPI.ParallelMPI Pa):
 
         #self.gustiness = 0.001
-        self.z0 = 1.0e-5
         self.L_fp = LH.L_fp
         self.Lambda_fp = LH.Lambda_fp
         self.CC = ClausiusClapeyron()
         self.CC.initialize(namelist, LH, Pa)
 
         self.file = str(namelist['gcm']['file'])
+        try:
+            self.z0 = namelist['surface']['z0']
+        except:
+            self.z0 = 1.0e-5
         try:
             self.griddata = namelist['gcm']['griddata']
         except:
