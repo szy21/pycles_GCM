@@ -1446,7 +1446,7 @@ cdef class SurfaceGCMNew(SurfaceBase):
         try:
             self.z0 = namelist['surface']['z0']
         except:
-            self.z0 = 1.0e-5
+            self.z0 = 1.0e-4
         try:
             self.griddata = namelist['gcm']['griddata']
         except:
