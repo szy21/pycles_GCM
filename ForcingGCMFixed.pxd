@@ -80,6 +80,8 @@ cdef class ForcingGCMNew:
         double z_i
         double z_r
         double tau_wind
+        int gcm_tidx
+        bint instant_forcing
         bint add_advection
         bint add_horiz_adv_vert_fluc
         bint add_horiz_advection

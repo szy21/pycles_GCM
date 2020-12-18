@@ -442,6 +442,14 @@ cdef class ForcingGCMNew:
         else:
             self.site = namelist['gcm']['site']
         try:
+            self.instant_forcing = namelist['gcm']['instant_forcing']
+        except:
+            self.instant_forcing = False
+        try:
+            self.gcm_tidx = namelist['gcm']['gcm_tidx']
+        except:
+            self.gcm_tidx = 0
+        try:
             self.relax_scalar = namelist['forcing']['relax_scalar']
         except:
             self.relax_scalar = False
@@ -618,24 +626,24 @@ cdef class ForcingGCMNew:
                 self.lat = rdr.get_value('lat')
             Pa.root_print(self.lat)
             self.coriolis_param = 2.0 * omega * sin(self.lat * pi / 180.0)
-            self.temp = rdr.get_interp_profile_old('ta', Gr.zp_half)
-            self.sphum = rdr.get_interp_profile_old('hus', Gr.zp_half)
-            self.ucomp = rdr.get_interp_profile_old('ua', Gr.zp_half)
-            self.vcomp = rdr.get_interp_profile_old('va', Gr.zp_half)
-            temp_at_zp = rdr.get_interp_profile('ta', Gr.zp)
-            sphum_at_zp = rdr.get_interp_profile('hus', Gr.zp)
+            self.temp = rdr.get_interp_profile_old('ta', Gr.zp_half, instant=self.instant_forcing, t_idx=self.gcm_tidx)
+            self.sphum = rdr.get_interp_profile_old('hus', Gr.zp_half, instant=self.instant_forcing, t_idx=self.gcm_tidx)
+            self.ucomp = rdr.get_interp_profile_old('ua', Gr.zp_half, instant=self.instant_forcing, t_idx=self.gcm_tidx)
+            self.vcomp = rdr.get_interp_profile_old('va', Gr.zp_half, instant=self.instant_forcing, t_idx=self.gcm_tidx)
+            temp_at_zp = rdr.get_interp_profile('ta', Gr.zp, instant=self.instant_forcing, t_idx=self.gcm_tidx)
+            sphum_at_zp = rdr.get_interp_profile('hus', Gr.zp, instant=self.instant_forcing, t_idx=self.gcm_tidx)
             if self.add_ls_pgradient:
-                self.ug = rdr.get_interp_profile_old('u_geos', Gr.zp_half)
-                self.vg = rdr.get_interp_profile_old('v_geos', Gr.zp_half)
+                self.ug = rdr.get_interp_profile_old('u_geos', Gr.zp_half, instant=self.instant_forcing, t_idx=self.gcm_tidx)
+                self.vg = rdr.get_interp_profile_old('v_geos', Gr.zp_half, instant=self.instant_forcing, t_idx=self.gcm_tidx)
             if self.add_advection:
-                self.t_tend_adv = rdr.get_interp_profile_old('tnta', Gr.zp_half)
-                self.qt_tend_adv = rdr.get_interp_profile_old('tnhusa',Gr.zp_half)
+                self.t_tend_adv = rdr.get_interp_profile_old('tnta', Gr.zp_half, instant=self.instant_forcing, t_idx=self.gcm_tidx)
+                self.qt_tend_adv = rdr.get_interp_profile_old('tnhusa',Gr.zp_half, instant=self.instant_forcing, t_idx=self.gcm_tidx)
             if self.add_horiz_adv_vert_fluc:
-                tnta = rdr.get_interp_profile_old('tnta', Gr.zp_half)
-                tnhusa = rdr.get_interp_profile_old('tnhusa',Gr.zp_half)
-                tntwork =  rdr.get_interp_profile_old('tntwork', Gr.zp_half)
-                omega_vv = rdr.get_interp_profile_old('wap', Gr.zp_half)
-                alpha = rdr.get_interp_profile_old('alpha', Gr.zp_half)
+                tnta = rdr.get_interp_profile_old('tnta', Gr.zp_half, instant=self.instant_forcing, t_idx=self.gcm_tidx)
+                tnhusa = rdr.get_interp_profile_old('tnhusa',Gr.zp_half, instant=self.instant_forcing, t_idx=self.gcm_tidx)
+                tntwork =  rdr.get_interp_profile_old('tntwork', Gr.zp_half, instant=self.instant_forcing, t_idx=self.gcm_tidx)
+                omega_vv = rdr.get_interp_profile_old('wap', Gr.zp_half, instant=self.instant_forcing, t_idx=self.gcm_tidx)
+                alpha = rdr.get_interp_profile_old('alpha', Gr.zp_half, instant=self.instant_forcing, t_idx=self.gcm_tidx)
                 subsidence = -np.array(omega_vv) * alpha / g
                 temp_hadv_fluc = np.zeros(np.shape(tnta))
                 sphum_hadv_fluc = np.zeros(np.shape(tnta))
@@ -645,13 +653,13 @@ cdef class ForcingGCMNew:
                 self.t_tend_hadv = temp_hadv_fluc #hadv includes vertical fluctuation
                 self.qt_tend_hadv = sphum_hadv_fluc
             if self.add_horiz_advection:
-                self.t_tend_hadv = rdr.get_interp_profile_old('tntha', Gr.zp_half)
-                self.qt_tend_hadv = rdr.get_interp_profile_old('tnhusha', Gr.zp_half)
+                self.t_tend_hadv = rdr.get_interp_profile_old('tntha', Gr.zp_half, instant=self.instant_forcing, t_idx=self.gcm_tidx)
+                self.qt_tend_hadv = rdr.get_interp_profile_old('tnhusha', Gr.zp_half, instant=self.instant_forcing, t_idx=self.gcm_tidx)
             if self.add_vert_fluctuation:
-                tntva = rdr.get_interp_profile_old('tntva', Gr.zp_half)
-                tnhusva = rdr.get_interp_profile_old('tnhusva',Gr.zp_half)
-                omega_vv = rdr.get_interp_profile_old('wap', Gr.zp_half)
-                alpha = rdr.get_interp_profile_old('alpha', Gr.zp_half)
+                tntva = rdr.get_interp_profile_old('tntva', Gr.zp_half, instant=self.instant_forcing, t_idx=self.gcm_tidx)
+                tnhusva = rdr.get_interp_profile_old('tnhusva',Gr.zp_half, instant=self.instant_forcing, t_idx=self.gcm_tidx)
+                omega_vv = rdr.get_interp_profile_old('wap', Gr.zp_half, instant=self.instant_forcing, t_idx=self.gcm_tidx)
+                alpha = rdr.get_interp_profile_old('alpha', Gr.zp_half, instant=self.instant_forcing, t_idx=self.gcm_tidx)
                 subsidence = -np.array(omega_vv) * alpha / g
                 temp_fluc = np.zeros(np.shape(tntva))
                 sphum_fluc = np.zeros(np.shape(tntva))
@@ -661,8 +669,8 @@ cdef class ForcingGCMNew:
                 self.t_tend_fluc = temp_fluc
                 self.qt_tend_fluc = sphum_fluc
             if self.add_subsidence or self.add_subsidence_wind:
-                self.omega_vv = rdr.get_interp_profile_old('wap', Gr.zp_half)
-                alpha = rdr.get_interp_profile_old('alpha', Gr.zp_half)
+                self.omega_vv = rdr.get_interp_profile_old('wap', Gr.zp_half, instant=self.instant_forcing, t_idx=self.gcm_tidx)
+                alpha = rdr.get_interp_profile_old('alpha', Gr.zp_half, instant=self.instant_forcing, t_idx=self.gcm_tidx)
                 self.subsidence = -np.array(self.omega_vv) * alpha / g
             Pa.root_print('Finished updating forcing')
      

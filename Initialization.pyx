@@ -1543,6 +1543,14 @@ def InitGCMNew(namelist, Grid.Grid Gr,PrognosticVariables.PrognosticVariables PV
         griddata = namelist['gcm']['griddata']
     except:
         griddata = False
+    try:
+        instant_forcing = namelist['gcm']['instant_forcing']
+    except:
+        instant_forcing = False
+    try:
+        gcm_tidx = namelist['gcm']['gcm_tidx']
+    except:
+        gcm_tidx = 0
     if griddata:
         lat = namelist['gcm']['lat']
         lon = namelist['gcm']['lon']
@@ -1557,9 +1565,9 @@ def InitGCMNew(namelist, Grid.Grid Gr,PrognosticVariables.PrognosticVariables PV
     else:
         rdr = cfreader(data_path, site)
 
-    RS.Pg = rdr.get_timeseries_mean('ps')
-    RS.Tg = rdr.get_timeseries_mean('ts')
-    RS.qtg = rdr.get_profile_mean('hus')[0]
+    RS.Pg = rdr.get_timeseries_mean('ps', instant=instant_forcing, t_idx=gcm_tidx)
+    RS.Tg = rdr.get_timeseries_mean('ts', instant=instant_forcing, t_idx=gcm_tidx)
+    RS.qtg = rdr.get_profile_mean('hus', instant=instant_forcing, t_idx=gcm_tidx)[0]
 
     RS.u0 = 0.0
     RS.v0 = 0.0
@@ -1586,10 +1594,10 @@ def InitGCMNew(namelist, Grid.Grid Gr,PrognosticVariables.PrognosticVariables PV
 
 
 
-    cdef double [:] t = rdr.get_interp_profile('ta', Gr.zp_half)#interp_pchip(Gr.zp_half, z_in, np.log(t_in))
-    cdef double [:] qt = rdr.get_interp_profile('hus', Gr.zp_half)
-    cdef double [:] u = rdr.get_interp_profile('ua', Gr.zp_half)
-    cdef double [:] v = rdr.get_interp_profile('va', Gr.zp_half)
+    cdef double [:] t = rdr.get_interp_profile('ta', Gr.zp_half, instant=instant_forcing, t_idx=gcm_tidx)#interp_pchip(Gr.zp_half, z_in, np.log(t_in))
+    cdef double [:] qt = rdr.get_interp_profile('hus', Gr.zp_half, instant=instant_forcing, t_idx=gcm_tidx)
+    cdef double [:] u = rdr.get_interp_profile('ua', Gr.zp_half, instant=instant_forcing, t_idx=gcm_tidx)
+    cdef double [:] v = rdr.get_interp_profile('va', Gr.zp_half, instant=instant_forcing, t_idx=gcm_tidx)
 
 
 

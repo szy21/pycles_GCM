@@ -227,6 +227,8 @@ cdef class SurfaceGCMNew(SurfaceBase):
         int t_indx
         str file
         bint griddata
+        bint instant_forcing
+        int gcm_tidx
         double lat
         double lon
         bint gcm_profiles_initialized
