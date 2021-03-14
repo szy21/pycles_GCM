@@ -1496,8 +1496,9 @@ cdef class SurfaceGCMNew(SurfaceBase):
             rdr = cfreader(self.file, self.site)
 
         self.T_surface = rdr.get_timeseries_mean('ts', instant=self.instant_forcing, t_idx=self.gcm_tidx)
-        self.fq = rdr.get_timeseries_mean('hfls', instant=self.instant_forcing, t_idx=self.gcm_tidx)
-        self.ft = rdr.get_timeseries_mean('hfss', instant=self.instant_forcing, t_idx=self.gcm_tidx)
+        if self.fixed_sfc_flux:
+            self.fq = rdr.get_timeseries_mean('hfls', instant=self.instant_forcing, t_idx=self.gcm_tidx)
+            self.ft = rdr.get_timeseries_mean('hfss', instant=self.instant_forcing, t_idx=self.gcm_tidx)
         if self.read_gustiness:
             self.gustiness = rdr.get_value('gustiness')
         self.scaled_gustiness = self.gustiness * self.gustiness_factor
