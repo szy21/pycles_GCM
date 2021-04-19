@@ -126,6 +126,6 @@ def write_field(fname, f, data):
     rootgrp.close()
 
 if __name__ == "__main__":
-    o_path = "/export/data1/zhaoyi/GCMForcedLES/1_00x/1000m/Output.1_00x_180.0_1000m.4x/fields/12960000/"
-    path = "/export/data1/zhaoyi/GCMForcedLES/1_00x/1000m/Output.1_00x_180.0_1000m.4x/fields/12960000/"
+    o_path = "/central/groups/esm/zhaoyi/GCMForcedLES/cfsite/test/Output.cfsite23_era5_200307.4x/fields/432000/"
+    path = "/central/groups/esm/zhaoyi/GCMForcedLES/cfsite/test/Output.cfsite23_era5_200307.4x/fields/432000/" 
     main(path, o_path)
