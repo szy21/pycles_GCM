@@ -1378,74 +1378,6 @@ def InitZGILS(namelist, Grid.Grid Gr,PrognosticVariables.PrognosticVariables PV,
     return
 
 
-def InitGCMVarying(namelist, Grid.Grid Gr,PrognosticVariables.PrognosticVariables PV,
-                       ReferenceState.ReferenceState RS, Th, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa , LatentHeat LH):
-
-
-
-
-    #Generate the reference profiles
-    data_path = namelist['gcm']['file']
-    fh = open(data_path, 'r')
-    input_data_tv = cPickle.load(fh)
-    fh.close()
-
-
-    RS.Pg = np.mean(input_data_tv['ps'][:])
-    RS.Tg = np.mean(input_data_tv['ts'][:])
-    RS.qtg = np.mean(input_data_tv['shum'][:,-1])
-    RS.u0 = 0.0
-    RS.v0 = 0.0
-
-    RS.initialize(Gr, Th, NS, Pa)
-
-    np.random.seed(Pa.rank)
-
-    cdef:
-        Py_ssize_t u_varshift = PV.get_varshift(Gr,'u')
-        Py_ssize_t v_varshift = PV.get_varshift(Gr,'v')
-        Py_ssize_t w_varshift = PV.get_varshift(Gr,'w')
-        Py_ssize_t s_varshift = PV.get_varshift(Gr,'s')
-        Py_ssize_t qt_varshift = PV.get_varshift(Gr, 'qt')
-        Py_ssize_t i,j,k
-        Py_ssize_t ishift, jshift, e_varshift
-        Py_ssize_t ijk
-
-
-    t_in = input_data_tv['temp'][0,::-1]
-    shum_in = input_data_tv['shum'][0,::-1]
-    u_in = input_data_tv['u_geos'][0,::-1]
-    v_in = input_data_tv['v_geos'][0,::-1]
-    z_in = input_data_tv['zfull'][0, ::-1]
-
-
-    cdef double [:] t = interp_pchip(Gr.zp_half, z_in, t_in)
-    cdef double [:] qt = interp_pchip(Gr.zp_half, z_in, shum_in)
-    cdef double [:] u = interp_pchip(Gr.zp_half, z_in, u_in)
-    cdef double [:] v = interp_pchip(Gr.zp_half, z_in, v_in)
-
-
-    #Generate initial perturbations (here we are generating more than we need)
-    cdef double [:] theta_pert = np.random.random_sample(Gr.dims.npg)
-    cdef int jk
-    #Now set the initial condition
-    for i in xrange(Gr.dims.nlg[0]):
-        ishift =  i * Gr.dims.nlg[1] * Gr.dims.nlg[2]
-        for j in xrange(Gr.dims.nlg[1]):
-            jshift = j * Gr.dims.nlg[2]
-            for k in xrange(Gr.dims.nlg[2]):
-                ijk = ishift + jshift + k
-                jk = jshift + k
-                PV.values[u_varshift + ijk] = u[k]
-                PV.values[v_varshift + ijk] = v[k]
-                PV.values[w_varshift + ijk] = 0.0
-                PV.values[s_varshift + ijk] = Th.entropy(RS.p0_half[k],t[k],qt[k],0.0,0.0)
-                PV.values[qt_varshift + ijk] = qt[k]
-                if Gr.zpl_half[k] < 500.0:
-                    PV.values[s_varshift + ijk] = PV.values[s_varshift + ijk]  + (theta_pert[jk] - 0.5)*0.3
-
-    return
-
 def InitGCMMean(namelist, Grid.Grid Gr,PrognosticVariables.PrognosticVariables PV,
                        ReferenceState.ReferenceState RS, Th, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa , LatentHeat LH):
 
@@ -1636,6 +1568,80 @@ def InitGCMNew(namelist, Grid.Grid Gr,PrognosticVariables.PrognosticVariables PV
                     PV.values[qt_varshift + ijk] = qt[k]
                     if Gr.zpl_half[k] < 500.0:
                         PV.values[thli_varshift + ijk] = PV.values[thli_varshift + ijk]  + (theta_pert[ijk] - 0.5)*0.3
+
+    return
+
+def InitGCMVarying(namelist, Grid.Grid Gr,PrognosticVariables.PrognosticVariables PV,
+                       ReferenceState.ReferenceState RS, Th, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa , LatentHeat LH):
+
+    #Generate the reference profiles
+    data_path = namelist['gcm']['file']
+    try:
+        griddata = namelist['gcm']['griddata']
+    except:
+        griddata = False
+    if griddata:
+        lat = namelist['gcm']['lat']
+        lon = namelist['gcm']['lon']
+    else:
+        site = namelist['gcm']['site']
+
+    if griddata:
+        rdr = cfreader_grid(data_path, lat, lon)
+    else:
+        rdr = cfreader(data_path, site)
+
+    RS.Pg = rdr.get_timeseries_mean('ps', instant=True, t_idx=0)
+    RS.Tg = rdr.get_timeseries_mean('ts', instant=True, t_idx=0)
+    RS.qtg = rdr.get_profile_mean('hus', instant=True, t_idx=0)[0]
+
+    RS.u0 = 0.0
+    RS.v0 = 0.0
+
+    RS.initialize(Gr, Th, NS, Pa)
+
+    try:
+        random_seed_factor = namelist['initialization']['random_seed_factor']
+    except:
+        random_seed_factor = 1
+
+    np.random.seed(Pa.rank * random_seed_factor)
+
+    cdef:
+        Py_ssize_t u_varshift = PV.get_varshift(Gr,'u')
+        Py_ssize_t v_varshift = PV.get_varshift(Gr,'v')
+        Py_ssize_t w_varshift = PV.get_varshift(Gr,'w')
+        Py_ssize_t s_varshift
+        Py_ssize_t thli_varshift
+        Py_ssize_t qt_varshift = PV.get_varshift(Gr, 'qt')
+        Py_ssize_t i,j,k
+        Py_ssize_t ishift, jshift, e_varshift
+        Py_ssize_t ijk
+
+    cdef double [:] t = rdr.get_interp_profile('ta', Gr.zp_half, instant=True, t_idx=0)#interp_pchip(Gr.zp_half, z_in, np.log(t_in))
+    cdef double [:] qt = rdr.get_interp_profile('hus', Gr.zp_half, instant=True, t_idx=0)
+    cdef double [:] u = rdr.get_interp_profile('ua', Gr.zp_half, instant=True, t_idx=0)
+    cdef double [:] v = rdr.get_interp_profile('va', Gr.zp_half, instant=True, t_idx=0)
+
+    #Generate initial perturbations (here we are generating more than we need)
+    cdef double [:] theta_pert = np.random.random_sample(Gr.dims.npg)
+    cdef int jk
+    #Now set the initial condition
+    s_varshift = PV.get_varshift(Gr, 's')
+    for i in xrange(Gr.dims.nlg[0]):
+        ishift =  i * Gr.dims.nlg[1] * Gr.dims.nlg[2]
+        for j in xrange(Gr.dims.nlg[1]):
+            jshift = j * Gr.dims.nlg[2]
+            for k in xrange(Gr.dims.nlg[2]):
+                ijk = ishift + jshift + k
+                jk = ishift + jshift + k 
+                PV.values[u_varshift + ijk] = u[k]
+                PV.values[v_varshift + ijk] = v[k]
+                PV.values[w_varshift + ijk] = 0.0
+                PV.values[s_varshift + ijk] = Th.entropy(RS.p0_half[k],t[k],qt[k],0.0,0.0)
+                PV.values[qt_varshift + ijk] = qt[k]
+                if Gr.zpl_half[k] < 500.0:
+                    PV.values[s_varshift + ijk] = PV.values[s_varshift + ijk]  + (theta_pert[jk] - 0.5)*0.3
 
     return
 
