@@ -1,3 +1,9 @@
+#!python
+#cython: boundscheck=False
+#cython: wraparound=False
+#cython: initializedcheck=False
+#cython: cdivision=True
+
 import netCDF4 as nc
 cimport Grid
 cimport ReferenceState
@@ -32,14 +38,6 @@ cdef class ForcingGCMVarying:
             self.lon = namelist['gcm']['lon']
         else:
             self.site = namelist['gcm']['site']
-        try:
-            self.instant_forcing = namelist['gcm']['instant_forcing']
-        except:
-            self.instant_forcing = False
-        try:
-            self.gcm_tidx = namelist['gcm']['gcm_tidx']
-        except:
-            self.gcm_tidx = 0
         try:
             self.relax_scalar = namelist['forcing']['relax_scalar']
         except:

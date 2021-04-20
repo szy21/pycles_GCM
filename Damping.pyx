@@ -38,7 +38,7 @@ cdef class Damping:
             if casename == 'GCMNew':
                 self.scheme = RayleighGCMNew(namelist, Pa)
             elif casename == 'GCMVarying':
-                self.scheme = RayleighGCMVarying(namelist, Pa)
+                self.scheme = RayleighGCMNew(namelist, Pa)
             else:
                 self.scheme = Rayleigh(namelist, Pa)
                 Pa.root_print('Using Rayleigh Damping')

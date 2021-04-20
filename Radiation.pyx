@@ -64,12 +64,11 @@ def RadiationFactory(namelist, LatentHeat LH, ParallelMPI.ParallelMPI Pa):
             return RadiationRRTM(namelist, LH, Pa)
         elif casename == 'GCMFixed':
             return RadiationGCMGrey(namelist, LH, Pa)
-        elif casename == 'GCMVarying':
-            return RadiationGCMGreyMean(namelist, LH, Pa)
-            #return RadiationGCMGreyVarying(namelist, LH, Pa)
         elif casename == 'GCMMean':
             return RadiationGCMGreyMean(namelist, LH, Pa)
         elif casename == 'GCMNew':
+            return RadiationNone()
+        elif casename == 'GCMVarying':
             return RadiationNone()
         else:
             return RadiationNone()
@@ -534,6 +533,7 @@ cdef class RadiationRRTM(RadiationBase):
         casename = namelist['meta']['casename']
         self.modified_adiabat = False
         self.read_file = False
+        self.time_varying = False
         if casename == 'SHEBA':
             self.profile_name = 'sheba'
         elif casename == 'DYCOMS_RF01':
@@ -555,7 +555,7 @@ cdef class RadiationRRTM(RadiationBase):
             self.RH_adiabat = 0.3
         elif casename == 'GCMMean':
             self.profile_name = 'gcm_mean'
-        elif casename == 'GCMNew':
+        elif casename == 'GCMNew' or casename=='GCMVarying':
             self.read_file = True
             self.file = str(namelist['gcm']['file'])
             try:
@@ -570,6 +570,9 @@ cdef class RadiationRRTM(RadiationBase):
         else:
             Pa.root_print('RadiationRRTM: Case ' + casename + ' has no known extension profile')
             Pa.kill()
+
+        if casename=='GCMVarying':
+            self.time_varying = True
 
         # Namelist options related to the profile extension
         try:
@@ -708,6 +711,8 @@ cdef class RadiationRRTM(RadiationBase):
         NS.add_ts('toa_sw_flux_down_clr', Gr, Pa)
 
         RadiationBase.initialize(self, Gr, NS, Pa)
+        self.radiation_initialized = False
+        self.t_indx = 0
         
         return
 
@@ -960,6 +965,26 @@ cdef class RadiationRRTM(RadiationBase):
                  PrognosticVariables.PrognosticVariables PV, DiagnosticVariables.DiagnosticVariables DV,
                  Surface.SurfaceBase Sur, TimeStepping.TimeStepping TS,
                  ParallelMPI.ParallelMPI Pa):
+
+        if not self.radiation_initialized or int(TS.t // (3600.0 * 6.0)) > self.t_indx and self.time_varying:
+            self.radiation_initialized = True
+            Pa.root_print('Updating Time Varying Radiation Parameters')
+        
+            self.adjes = 1.0
+
+            if self.griddata:
+               rdr = cfreader_grid(self.file, self.lat, self.lon)
+            else:
+               rdr = cfreader(self.file, self.site)
+            self.toa_sw = rdr.get_timeseries_mean('rsdt', instant=True, t_idx=self.t_indx)
+            self.coszen = self.toa_sw / (self.scon * self.adjes)
+
+            if (self.coszen > 0.0):
+                self.adir = (.026/(self.coszen**1.7+.065) + (.15*(self.coszen-0.10)*(self.coszen-0.50)*(self.coszen-1.00)))
+            else:
+                self.adir = 0.0
+            self.t_indx = int(TS.t // (3600.0 * 6.0))
+            Pa.root_print('Finished Updating Time Varying Radiation Parameters')
 
         if TS.rk_step == 0:
             if self.radiation_frequency <= 0.0:

@@ -97,6 +97,9 @@ cdef class RadiationRRTM(RadiationBase):
         bint modified_adiabat
         bint griddata
         bint read_file
+        bint time_varying
+        bint radiation_initialized
+        int t_indx
         int site
         double lat
         double lon
