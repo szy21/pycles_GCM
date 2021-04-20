@@ -69,7 +69,7 @@ def SurfaceFactory(namelist, LatentHeat LH, ParallelMPI.ParallelMPI Par):
         elif casename == 'ZGILS':
             return SurfaceZGILS(namelist, LH, Par)
         elif casename == 'GCMVarying':
-            return SurfaceGCMVarying(namelist, LH, Par)
+            return SurfaceGCMNew(namelist, LH, Par)
         elif casename == 'GCMMean':
             return SurfaceGCMMean(namelist, LH, Par)
         elif casename == 'GCMNew':

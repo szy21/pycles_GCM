@@ -1591,9 +1591,9 @@ def InitGCMVarying(namelist, Grid.Grid Gr,PrognosticVariables.PrognosticVariable
     else:
         rdr = cfreader(data_path, site)
 
-    RS.Pg = rdr.get_timeseries_mean('ps', instant=True, t_idx=0)
-    RS.Tg = rdr.get_timeseries_mean('ts', instant=True, t_idx=0)
-    RS.qtg = rdr.get_profile_mean('hus', instant=True, t_idx=0)[0]
+    RS.Pg = rdr.get_timeseries_mean('ps', instant=False, t_idx=0)
+    RS.Tg = rdr.get_timeseries_mean('ts', instant=False, t_idx=0)
+    RS.qtg = rdr.get_profile_mean('hus', instant=False, t_idx=0)[0]
 
     RS.u0 = 0.0
     RS.v0 = 0.0

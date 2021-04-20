@@ -15,7 +15,8 @@ cimport Lookup
 from Thermodynamics cimport LatentHeat, ClausiusClapeyron
 import cPickle
 from scipy.interpolate import pchip
-
+from cfsites_forcing_reader import cfreader
+from cfgrid_forcing_reader import cfreader_grid
 #import pylab as plt
 include 'parameters.pxi'
 
