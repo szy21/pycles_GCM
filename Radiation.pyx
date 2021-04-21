@@ -967,6 +967,7 @@ cdef class RadiationRRTM(RadiationBase):
                  ParallelMPI.ParallelMPI Pa):
 
         if not self.radiation_initialized or int(TS.t // (3600.0 * 6.0)) > self.t_indx and self.time_varying:
+            self.t_indx = int(TS.t // (3600.0 * 6.0))
             self.radiation_initialized = True
             Pa.root_print('Updating Time Varying Radiation Parameters')
         
@@ -979,11 +980,6 @@ cdef class RadiationRRTM(RadiationBase):
             self.toa_sw = rdr.get_timeseries_mean('rsdt', instant=True, t_idx=self.t_indx)
             self.coszen = self.toa_sw / (self.scon * self.adjes)
 
-            if (self.coszen > 0.0):
-                self.adir = (.026/(self.coszen**1.7+.065) + (.15*(self.coszen-0.10)*(self.coszen-0.50)*(self.coszen-1.00)))
-            else:
-                self.adir = 0.0
-            self.t_indx = int(TS.t // (3600.0 * 6.0))
             Pa.root_print('Finished Updating Time Varying Radiation Parameters')
 
         if TS.rk_step == 0:
