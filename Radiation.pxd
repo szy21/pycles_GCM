@@ -147,6 +147,7 @@ cdef class RadiationRRTM(RadiationBase):
         double solar_constant
         double toa_sw
         double coszen
+        bint time_varying_coszen
         double adif
         double adir
         double radiation_frequency

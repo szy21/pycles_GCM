@@ -635,6 +635,10 @@ cdef class RadiationRRTM(RadiationBase):
             else:
                 Pa.root_print('Mean Daytime cos(SZA) not set so RadiationRRTM takes default value: coszen = 2.0/pi .')
                 self.coszen = 2.0/pi
+        try:
+            self.time_varying_coszen = namelist['radiation']['RRTM']['time_varying_coszen']
+        except:
+            self.time_varying_coszen = False
 
         if self.read_file:
             if self.griddata:
@@ -974,16 +978,18 @@ cdef class RadiationRRTM(RadiationBase):
         if not self.radiation_initialized or int(TS.t // (3600.0 * self.forcing_frequency)) > self.t_indx and self.time_varying:
             self.t_indx = int(TS.t // (3600.0 * self.forcing_frequency))
             self.radiation_initialized = True
-            Pa.root_print('Updating Time Varying Radiation Parameters')
-        
-            self.adjes = 1.0
+            Pa.root_print('Updating Time Varying Radiation Parameters')        
 
             if self.griddata:
                rdr = cfreader_grid(self.file, self.lat, self.lon)
             else:
                rdr = cfreader(self.file, self.site)
             self.toa_sw = rdr.get_timeseries_mean('rsdt', instant=True, t_idx=self.t_indx)
-            self.coszen = self.toa_sw / (self.scon * self.adjes)
+            self.adjes = self.toa_sw / (self.scon * self.coszen)
+
+            if self.time_varying_coszen:
+                self.adjes = 1.0
+                self.coszen = self.toa_sw / (self.scon * self.adjes)
 
             Pa.root_print('Finished Updating Time Varying Radiation Parameters')
 
