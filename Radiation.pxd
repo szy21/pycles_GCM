@@ -101,6 +101,7 @@ cdef class RadiationRRTM(RadiationBase):
         bint radiation_initialized
         int t_indx
         int site
+        double forcing_frequency
         double lat
         double lon
         AdjustedMoistAdiabat reference_profile

@@ -23,6 +23,7 @@ cdef class ForcingGCMVarying:
         double [:] ug
         double [:] vg
 
+        double forcing_frequency
         bint relax_scalar
         bint relax_wind
         double tau_scalar

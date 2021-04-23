@@ -39,6 +39,10 @@ cdef class ForcingGCMVarying:
         else:
             self.site = namelist['gcm']['site']
         try:
+            self.forcing_frequency = namelist['forcing']['frequency']
+        except:
+            self.forcing_frequency = 6.0	
+        try:
             self.relax_scalar = namelist['forcing']['relax_scalar']
         except:
             self.relax_scalar = False
@@ -155,9 +159,11 @@ cdef class ForcingGCMVarying:
             double [:] u_mean = Pa.HorizontalMean(Gr, &PV.values[u_shift])
             double [:] v_mean = Pa.HorizontalMean(Gr, &PV.values[v_shift])
 
-        if not self.gcm_profiles_initialized or int(TS.t // (3600.0 * 6.0)) > self.t_indx:
-            self.t_indx = int(TS.t // (3600.0 * 6.0))
+        if not self.gcm_profiles_initialized or int(TS.t // (3600.0 * self.forcing_frequency)) > self.t_indx:
+            self.t_indx = int(TS.t // (3600.0 * self.forcing_frequency))
             self.gcm_profiles_initialized = True
+            Pa.root_print(self.t_indx)
+            Pa.root_print(self.forcing_frequency)
             Pa.root_print('Updating Time Varying Forcing')
 
             if self.griddata:

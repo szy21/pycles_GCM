@@ -574,6 +574,11 @@ cdef class RadiationRRTM(RadiationBase):
         if casename=='GCMVarying':
             self.time_varying = True
 
+        try:
+            self.forcing_frequency = namelist['forcing']['frequency']
+        except:
+            self.forcing_frequency = 6.0
+
         # Namelist options related to the profile extension
         try:
             self.n_buffer = namelist['radiation']['RRTM']['buffer_points']
@@ -966,8 +971,8 @@ cdef class RadiationRRTM(RadiationBase):
                  Surface.SurfaceBase Sur, TimeStepping.TimeStepping TS,
                  ParallelMPI.ParallelMPI Pa):
 
-        if not self.radiation_initialized or int(TS.t // (3600.0 * 6.0)) > self.t_indx and self.time_varying:
-            self.t_indx = int(TS.t // (3600.0 * 6.0))
+        if not self.radiation_initialized or int(TS.t // (3600.0 * self.forcing_frequency)) > self.t_indx and self.time_varying:
+            self.t_indx = int(TS.t // (3600.0 * self.forcing_frequency))
             self.radiation_initialized = True
             Pa.root_print('Updating Time Varying Radiation Parameters')
         
