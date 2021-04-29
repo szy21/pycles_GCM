@@ -10,37 +10,48 @@ cimport TimeStepping
 
 cdef class ForcingGCMVarying:
     cdef:
+        bint griddata
         bint gcm_profiles_initialized
         int t_indx
+        double lat
+        double lon
+        double coriolis_param
+        double [:] temp
+        double [:] sphum
+        double [:] ucomp
+        double [:] vcomp
         double [:] ug
         double [:] vg
+
+        double forcing_frequency
+        bint relax_scalar
+        bint relax_wind
+        double tau_scalar
+        double z_i
+        double z_r
+        double tau_wind
+        int gcm_tidx
+        bint add_horiz_advection
+        bint add_subsidence
+        bint add_subsidence_wind
+        bint add_coriolis
+        bint add_ls_pgradient
+        double [:] qt_tend_nudge
+        double [:] t_tend_nudge
+        double [:] u_tend_nudge
+        double [:] v_tend_nudge
+        double [:] qt_tend_adv
+        double [:] t_tend_adv
+        double [:] s_tend_adv
+        double [:] qt_tend_hadv
+        double [:] t_tend_hadv
+        double [:] s_tend_hadv
+        double [:] qt_tend_fluc
+        double [:] t_tend_fluc
+        double [:] omega_vv
         double [:] subsidence
-        double [:] temp_dt_hadv
-        double [:] temp_dt_fino
-        double [:] temp_dt_resid
-        double [:] shum_dt_vadv
-        double [:] shum_dt_hadv
-        double [:] shum_dt_resid
-
-
-        double [:] u_dt_hadv
-        double [:] u_dt_vadv
-        double [:] u_dt_cof
-        double [:] u_dt_pres
-        double [:] u_dt_tot
-
-        double [:] v_dt_hadv
-        double [:] v_dt_vadv
-        double [:] v_dt_cof
-        double [:] v_dt_pres
-        double [:] v_dt_tot
-
-        double [:] p_gcm
-        double [:] rho_gcm
-        double [:] rho_half_gcm
-        double coriolis_param
         str file
-        double lat
+        int site
     cpdef initialize(self, Grid.Grid Gr,ReferenceState.ReferenceState Ref, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa)
     cpdef update(self, Grid.Grid Gr, ReferenceState.ReferenceState Ref,
                  PrognosticVariables.PrognosticVariables PV, DiagnosticVariables.DiagnosticVariables DV,  TimeStepping.TimeStepping TS,

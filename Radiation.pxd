@@ -97,7 +97,11 @@ cdef class RadiationRRTM(RadiationBase):
         bint modified_adiabat
         bint griddata
         bint read_file
+        bint time_varying
+        bint radiation_initialized
+        int t_indx
         int site
+        double forcing_frequency
         double lat
         double lon
         AdjustedMoistAdiabat reference_profile
@@ -143,6 +147,7 @@ cdef class RadiationRRTM(RadiationBase):
         double solar_constant
         double toa_sw
         double coszen
+        bint time_varying_coszen
         double adif
         double adir
         double radiation_frequency
