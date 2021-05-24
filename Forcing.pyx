@@ -44,7 +44,7 @@ cdef class Forcing:
         elif casename == 'SMOKE':
             self.scheme = ForcingNone()
         elif casename == 'Rico':
-            self.scheme = ForcingRico()
+            self.scheme = ForcingRico(namelist)
         elif casename == 'StableBubble':
             self.scheme = ForcingNone()
         elif casename == 'SaturatedBubble':
@@ -549,10 +549,18 @@ cdef class ForcingDyCOMS_RF01:
         return
 
 cdef class ForcingRico:
-    def __init__(self):
+    def __init__(self, namelist):
         latitude = 18.0 # degrees
         self.coriolis_param = 2.0 * omega * sin(latitude * pi / 180.0 )
         self.momentum_subsidence = 0
+        try:
+            self.homogenize_qr = namelist['forcing']['homogenize_qr']
+        except:
+            self.homogenize_qr = False
+        try:
+            self.tau_qr = namelist['forcing']['tau_qr']
+        except:
+            self.tau_qr = 86400.0
         return
 
     cpdef initialize(self, Grid.Grid Gr,ReferenceState.ReferenceState Ref, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa):
@@ -611,6 +619,8 @@ cdef class ForcingRico:
             Py_ssize_t qt_shift = PV.get_varshift(Gr,'qt')
             Py_ssize_t t_shift = DV.get_varshift(Gr, 'temperature')
             Py_ssize_t ql_shift = DV.get_varshift(Gr,'ql')
+            Py_ssize_t qr_shift = PV.get_varshift(Gr,'qr')
+            double [:] qr_mean = Pa.HorizontalMean(Gr, &PV.values[qr_shift])
             double qt, qv, p0, t
 
         apply_subsidence(&Gr.dims,&Ref.rho0[0],&Ref.rho0_half[0],&self.subsidence[0],&PV.values[s_shift],&PV.tendencies[s_shift])
@@ -619,8 +629,19 @@ cdef class ForcingRico:
             apply_subsidence(&Gr.dims,&Ref.rho0[0],&Ref.rho0_half[0],&self.subsidence[0],&PV.values[u_shift],&PV.tendencies[u_shift])
             apply_subsidence(&Gr.dims,&Ref.rho0[0],&Ref.rho0_half[0],&self.subsidence[0],&PV.values[v_shift],&PV.tendencies[v_shift])
 
+        # homogenize qr
+        cdef double xi_qr = 1.0 / self.tau_qr
+        if self.homogenize_qr:
+            with nogil:
+                for i in xrange(imin,imax):
+                    ishift = i * istride
+                    for j in xrange(jmin,jmax):
+                        jshift = j * jstride
+                        for k in xrange(kmin,kmax):
+                            ijk = ishift + jshift + k
+                            PV.tendencies[qr_shift + ijk] += -xi_qr * (PV.values[qr_shift+ijk] - qr_mean[k])
 
-                #Apply large scale source terms
+        #Apply large scale source terms
         with nogil:
             for i in xrange(imin,imax):
                 ishift = i * istride

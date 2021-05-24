@@ -89,6 +89,8 @@ cdef class ForcingDyCOMS_RF01:
 
 cdef class ForcingRico:
     cdef:
+        bint homogenize_qr
+        double tau_qr
         double [:] ug
         double [:] vg
         double [:] dtdt
