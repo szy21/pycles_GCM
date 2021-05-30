@@ -1438,10 +1438,6 @@ cdef class SurfaceGCMVarying(SurfaceBase):
         else:
             self.site = namelist['gcm']['site']
         try:
-            self.gcm_tidx = namelist['gcm']['gcm_tidx']
-        except:
-            self.gcm_tidx = 0
-        try:
             self.fixed_sfc_flux = namelist['surface']['fixed_sfc_flux']
         except:
             self.fixed_sfc_flux = False
@@ -1491,7 +1487,7 @@ cdef class SurfaceGCMVarying(SurfaceBase):
             else:
                 rdr = cfreader(self.file, self.site)
             self.t_indx = int(TS.t // (3600.0 * self.forcing_frequency))
-            self.surface_initialize = True
+            self.surface_initialized = True
             self.T_surface = rdr.get_timeseries_mean('ts', instant=True, t_idx=self.t_idx)
             if self.fixed_sfc_flux:
                 self.fq = rdr.get_timeseries_mean('hfls', instant=True, t_idx=self.t_idx)
