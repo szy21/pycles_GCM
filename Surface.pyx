@@ -1488,10 +1488,10 @@ cdef class SurfaceGCMVarying(SurfaceBase):
                 rdr = cfreader(self.file, self.site)
             self.t_indx = int(TS.t // (3600.0 * self.forcing_frequency))
             self.surface_initialized = True
-            self.T_surface = rdr.get_timeseries_mean('ts', instant=True, t_idx=self.t_idx)
+            self.T_surface = rdr.get_timeseries_mean('ts', instant=True, t_idx=self.t_indx)
             if self.fixed_sfc_flux:
-                self.fq = rdr.get_timeseries_mean('hfls', instant=True, t_idx=self.t_idx)
-                self.ft = rdr.get_timeseries_mean('hfss', instant=True, t_idx=self.t_idx)
+                self.fq = rdr.get_timeseries_mean('hfls', instant=True, t_idx=self.t_indx)
+                self.ft = rdr.get_timeseries_mean('hfss', instant=True, t_idx=self.t_indx)
 
         if Pa.sub_z_rank != 0:
             return
