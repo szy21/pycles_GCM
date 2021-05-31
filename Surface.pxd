@@ -165,26 +165,6 @@ cdef class SurfaceZGILS(SurfaceBase):
     cpdef stats_io(self, Grid.Grid Gr, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa)
 
 
-cdef class SurfaceGCMVarying(SurfaceBase):
-
-    cdef:
-        ClausiusClapeyron CC
-        double gustiness
-        double z0
-        double ct
-        double fq
-        double ft
-        double rho0
-        int t_indx
-        str file
-        bint gcm_profiles_initialized
-        double [:] windspeed
-
-    cpdef initialize(self, Grid.Grid Gr, ReferenceState.ReferenceState Ref, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa)
-    cpdef update(self, Grid.Grid Gr, ReferenceState.ReferenceState Ref, PrognosticVariables.PrognosticVariables PV,
-                 DiagnosticVariables.DiagnosticVariables DV,   ParallelMPI.ParallelMPI Pa, TimeStepping.TimeStepping TS)
-    cpdef stats_io(self, Grid.Grid Gr, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa)
-
 cdef class SurfaceGCMMean(SurfaceBase):
 
     cdef:
@@ -238,5 +218,34 @@ cdef class SurfaceGCMNew(SurfaceBase):
                  DiagnosticVariables.DiagnosticVariables DV,   ParallelMPI.ParallelMPI Pa, TimeStepping.TimeStepping TS)
     cpdef stats_io(self, Grid.Grid Gr, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa)
 
+cdef class SurfaceGCMVarying(SurfaceBase):
+
+    cdef:
+        ClausiusClapeyron CC
+        double gustiness
+        double gustiness_factor
+        double scaled_gustiness
+        double z0
+        double ct
+        double fq
+        double ft
+        double rho0
+        int site
+        bint fixed_sfc_flux
+        bint alt_gustiness
+        bint read_gustiness
+        int t_indx
+        str file
+        bint griddata
+        double forcing_frequency
+        int t_idx
+        double lat
+        double lon
+        bint surface_initialized
+
+    cpdef initialize(self, Grid.Grid Gr, ReferenceState.ReferenceState Ref, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa)
+    cpdef update(self, Grid.Grid Gr, ReferenceState.ReferenceState Ref, PrognosticVariables.PrognosticVariables PV,
+                 DiagnosticVariables.DiagnosticVariables DV,   ParallelMPI.ParallelMPI Pa, TimeStepping.TimeStepping TS)
+    cpdef stats_io(self, Grid.Grid Gr, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa)
 
 cdef inline double compute_z0(double z1, double windspeed) nogil
