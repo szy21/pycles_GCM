@@ -34,10 +34,11 @@ cdef class UniformViscosity:
 cdef class LinearViscosity:
 
     cdef:
-        double max_viscosity
-        double max_diffusivity
+        double viscosity_max
+        double diffusivity_max
         double z_top
-        double z_peak
+        double z_peak1
+        double z_peak2
         bint is_init 
 
     cpdef initialize(self, Grid.Grid Gr, PrognosticVariables.PrognosticVariables PV, NetCDFIO_Stats NS, ParallelMPI.ParallelMPI Pa)
