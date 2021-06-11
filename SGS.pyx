@@ -107,18 +107,21 @@ cdef class UniformViscosity:
 cdef class LinearViscosity:
     def __init__(self,namelist):
         try:
-            self.max_diffusivity = namelist['sgs']['LinearViscosity']['diffusivity']
+            self.diffusivity_max = namelist['sgs']['LinearViscosity']['diffusivity_max']
         except:
-            self.max_diffusivity = 0.0
-
+            self.diffusivity_max = 0.0
         try:
-            self.max_viscosity = namelist['sgs']['LinearViscosity']['viscosity']
+            self.viscosity_max = namelist['sgs']['LinearViscosity']['viscosity_max']
         except:
-            self.max_viscosity = 0.0
+            self.viscosity_max = 0.0
         try:
-            self.z_peak = namelist['sgs']['LinearViscosity']['z_peak']
+            self.z_peak1 = namelist['sgs']['LinearViscosity']['z_peak1']
         except:
-            self.z_peak = 0.0
+            self.z_peak1 = 0.0
+        try:
+            self.z_peak2 = namelist['sgs']['LinearViscosity']['z_peak2']
+        except:
+            self.z_peak2 = self.z_peak1
         try:
             self.z_top = namelist['sgs']['LinearViscosity']['z_top']
         except:
@@ -151,10 +154,12 @@ cdef class LinearViscosity:
             for k in xrange(Gr.dims.nlg[2]):
                 if Gr.zpl_half[k] >= self.z_top:
                     xi[k] = 0.0
-                elif Gr.zpl_half[k] >= self.z_peak:
-                    xi[k] = (self.z_top-Gr.zpl_half[k]) / (self.z_top-self.z_peak)
+                elif Gr.zpl_half[k] >= self.z_peak2:
+                    xi[k] = (self.z_top-Gr.zpl_half[k]) / (self.z_top-self.z_peak2)
+                elif Gr.zpl_half[k] >= self.z_peak1:
+                    xi[k] = 1.0
                 else:
-                    xi[k] = Gr.zpl_half[k] / self.z_peak
+                    xi[k] = Gr.zpl_half[k] / self.z_peak1
         with nogil:
             if not self.is_init: 
                 for i in xrange(gw,imax):
@@ -163,8 +168,8 @@ cdef class LinearViscosity:
                         jshift = j * jstride
                         for k in xrange(gw,kmax):
                             ijk = ishift + jshift + k
-                            DV.values[diff_shift + ijk] = self.max_diffusivity * xi[k]
-                            DV.values[visc_shift + ijk] = self.max_viscosity * xi[k]
+                            DV.values[diff_shift + ijk] = self.diffusivity_max * xi[k]
+                            DV.values[visc_shift + ijk] = self.viscosity_max * xi[k]
                 self.is_init = True 
 
         return
