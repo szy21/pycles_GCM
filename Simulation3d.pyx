@@ -216,12 +216,12 @@ class Simulation3d:
                 #self.Tr.update_cleanup(self.Gr, self.Ref, PV_, DV_, self.Pa)
                 #print 'Damping'
                 self.Damping.update(self.Gr, self.Ref,self.PV, self.DV, self.Pa, self.TS)
+                #PV_.debug(self.Gr,self.Ref,self.StatsIO,self.Pa)
                 self.TS.update(self.Gr, self.PV, self.Pa)
                 PV_.Update_all_bcs(self.Gr, self.Pa)
                 self.Pr.update(self.Gr, self.Ref, self.DV, self.PV, self.Pa)
                 self.TS.adjust_timestep(self.Gr, self.PV, self.DV,self.Pa)
                 self.io()
-                #PV_.debug(self.Gr,self.Ref,self.StatsIO,self.Pa)
             time2 = time.time()
             self.Pa.root_print('T = ' + str(self.TS.t) + ' dt = ' + str(self.TS.dt) +
                                ' cfl_max = ' + str(self.TS.cfl_max) + ' walltime = ' + str(time2 - time1))
