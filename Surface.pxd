@@ -232,6 +232,7 @@ cdef class SurfaceGCMVarying(SurfaceBase):
         double rho0
         int site
         bint fixed_sfc_flux
+        bint add_momentum_flux
         bint alt_gustiness
         bint read_gustiness
         int t_indx

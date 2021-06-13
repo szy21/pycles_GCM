@@ -1442,6 +1442,10 @@ cdef class SurfaceGCMVarying(SurfaceBase):
         except:
             self.fixed_sfc_flux = False
         try:
+            self.add_momentum_flux = namelist['surface']['add_momentum_flux']
+        except:
+            self.add_momentum_flux = True
+        try:
             self.alt_gustiness = namelist['surface']['alt_gustiness']
         except:
             self.alt_gustiness = True
@@ -1569,14 +1573,14 @@ cdef class SurfaceGCMVarying(SurfaceBase):
                         ustar = sqrt(cm[ij]) * windspeed[ij]
                         self.friction_velocity[ij] = ustar
 
-
-        with nogil:
-            for i in xrange(gw, imax-gw):
-                for j in xrange(gw, jmax-gw):
-                    ijk = i * istride + j * jstride + gw
-                    ij = i * istride_2d + j
-                    self.u_flux[ij] = -interp_2(cm[ij], cm[ij+istride_2d])*interp_2(windspeed[ij], windspeed[ij+istride_2d]) * (PV.values[u_shift + ijk] + Ref.u0)
-                    self.v_flux[ij] = -interp_2(cm[ij], cm[ij+1])*interp_2(windspeed[ij], windspeed[ij+1]) * (PV.values[v_shift + ijk] + Ref.v0)
+        if self.add_momentum_flux:
+            with nogil:
+                for i in xrange(gw, imax-gw):
+                    for j in xrange(gw, jmax-gw):
+                        ijk = i * istride + j * jstride + gw
+                        ij = i * istride_2d + j
+                        self.u_flux[ij] = -interp_2(cm[ij], cm[ij+istride_2d])*interp_2(windspeed[ij], windspeed[ij+istride_2d]) * (PV.values[u_shift + ijk] + Ref.u0)
+                        self.v_flux[ij] = -interp_2(cm[ij], cm[ij+1])*interp_2(windspeed[ij], windspeed[ij+1]) * (PV.values[v_shift + ijk] + Ref.v0)
 
         SurfaceBase.update(self, Gr, Ref, PV, DV, Pa, TS)
 
