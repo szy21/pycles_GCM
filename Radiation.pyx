@@ -646,7 +646,8 @@ cdef class RadiationRRTM(RadiationBase):
             else:
                rdr = cfreader(self.file, self.site)
             self.toa_sw = rdr.get_timeseries_mean('rsdt')
-            self.coszen = rdr.get_value('coszen')
+            if not self.time_varying_coszen:
+                self.coszen = rdr.get_value('coszen')
             self.adjes = self.toa_sw / (self.scon * self.coszen)
 
         try:
